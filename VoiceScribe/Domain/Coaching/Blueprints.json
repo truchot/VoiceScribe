@@ -1,0 +1,1274 @@
+[
+  {
+    "movement": "accueil",
+    "intent": "Créer un lien humain authentique. La première impression détermine le niveau de confiance pour tout le reste du call. On n'est pas encore en mode vente — on est deux humains qui se rencontrent.\",\n            prospectExperience: \"Cette personne est sympathique et sincèrement intéressée par moi.\",\n            goldenRule: \"Soyez la personne avec qui on a envie de prendre un café.\",\n            openers: [\n                ConversationStarter(\n                    phrase: \"Ravi de vous rencontrer ! Comment ça se passe de votre côté en ce moment ?\",\n                    context: \"Premier contact, ton décontracté\",\n                    energy: .warm\n                ),\n                ConversationStarter(\n                    phrase: \"Merci d'avoir pris le temps. Avant toute chose, comment vous allez ?\",\n                    context: \"Prospect occupé, montrer qu'on valorise son temps\",\n                    energy: .warm\n                ),\n                ConversationStarter(\n                    phrase: \"J'ai vu que vous étiez [poste] chez [entreprise] — c'est un secteur passionnant. Depuis combien de temps vous y êtes ?\",\n                    context: \"Quand on a fait ses recherches\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"On m'a dit beaucoup de bien de ce que vous faites chez [entreprise]. Je suis curieux d'en savoir plus.\",\n                    context: \"Introduction via recommandation\",\n                    energy: .curious\n                )\n            ],\n            memorySlots: [\n                MemorySlot(key: \"prospect_name\", label: \"Prénom du prospect\", importance: .critical, detectionHints: [\"je m'appelle\", \"moi c'est\", \"prénom\"]),\n                MemorySlot(key: \"prospect_role\", label: \"Poste / Fonction\", importance: .important, detectionHints: [\"je suis\", \"mon rôle\", \"je gère\", \"responsable\", \"directeur\", \"CEO\", \"fondateur\"]),\n                MemorySlot(key: \"prospect_mood\", label: \"Humeur initiale\", importance: .helpful, detectionHints: []),\n                MemorySlot(key: \"referral_source\", label: \"Comment ils nous ont trouvés\", importance: .helpful, detectionHints: [\"trouvé\", \"recommandé\", \"vu sur\", \"entendu parler\"])\n            ],\n            transitionCues: [\n                \"Quand le small talk se tarit naturellement (~1-2 min)\",\n                \"Quand le prospect demande \"alors, de quoi on parle ?\"\",\n                \"Après un rire partagé ou un moment de connexion\"\n            ],\n            antiPatterns: [\n                \"Sauter directement dans le pitch sans aucun small talk\",\n                \"Small talk forcé et mécanique (\"il fait beau chez vous ?\")\",\n                \"Parler de soi ou de son entreprise pendant l'accueil\"\n            ],\n            situationalTips: [\n                SituationalTip(trigger: .tooLongInMovement, advice: \"Le small talk dure. Transitionnez naturellement vers le cadrage.\", alternatives: [\"\"Bon, je ne vais pas vous monopoliser ! Si vous êtes d'accord, voilà ce que je vous propose...\"\", \"\"C'est super intéressant. D'ailleurs, c'est un peu lié à la raison de notre échange...\"\"]),\n                SituationalTip(trigger: .tooShortInMovement, advice: \"Prenez 30 secondes de plus pour créer le lien. Un prospect à l'aise parle plus.\", alternatives: []),\n                SituationalTip(trigger: .emotionDetected(.hesitant), advice: \"Le prospect semble tendu. Ralentissez, souriez, posez une question légère.\", alternatives: [\"\"Pas de stress, c'est vraiment un échange informel. Aucun engagement.\"",
+    "prospectExperience": "Cette personne est sympathique et sincèrement intéressée par moi.",
+    "goldenRule": "Soyez la personne avec qui on a envie de prendre un café.",
+    "openers": [
+      {
+        "phrase": "Ravi de vous rencontrer ! Comment ça se passe de votre côté en ce moment ?",
+        "context": "Premier contact, ton décontracté",
+        "energy": "warm"
+      },
+      {
+        "phrase": "Merci d'avoir pris le temps. Avant toute chose, comment vous allez ?",
+        "context": "Prospect occupé, montrer qu'on valorise son temps",
+        "energy": "warm"
+      },
+      {
+        "phrase": "J'ai vu que vous étiez [poste] chez [entreprise] — c'est un secteur passionnant. Depuis combien de temps vous y êtes ?",
+        "context": "Quand on a fait ses recherches",
+        "energy": "curious"
+      },
+      {
+        "phrase": "On m'a dit beaucoup de bien de ce que vous faites chez [entreprise]. Je suis curieux d'en savoir plus.",
+        "context": "Introduction via recommandation",
+        "energy": "curious"
+      }
+    ],
+    "memorySlots": [
+      {
+        "key": "prospect_name",
+        "label": "Prénom du prospect",
+        "importance": "critical",
+        "detectionHints": [
+          "je m'appelle",
+          "moi c'est",
+          "prénom"
+        ]
+      },
+      {
+        "key": "prospect_role",
+        "label": "Poste / Fonction",
+        "importance": "important",
+        "detectionHints": [
+          "je suis",
+          "mon rôle",
+          "je gère",
+          "responsable",
+          "directeur",
+          "CEO",
+          "fondateur"
+        ]
+      },
+      {
+        "key": "prospect_mood",
+        "label": "Humeur initiale",
+        "importance": "helpful",
+        "detectionHints": []
+      },
+      {
+        "key": "referral_source",
+        "label": "Comment ils nous ont trouvés",
+        "importance": "helpful",
+        "detectionHints": [
+          "trouvé",
+          "recommandé",
+          "vu sur",
+          "entendu parler"
+        ]
+      }
+    ],
+    "transitionCues": [
+      "Quand le small talk se tarit naturellement (~1-2 min)",
+      "Quand le prospect demande \\",
+      "",
+      "Après un rire partagé ou un moment de connexion"
+    ],
+    "antiPatterns": [
+      "Sauter directement dans le pitch sans aucun small talk",
+      "Small talk forcé et mécanique (\\",
+      ")",
+      "Parler de soi ou de son entreprise pendant l'accueil"
+    ],
+    "situationalTips": [
+      {
+        "advice": "Le small talk dure. Transitionnez naturellement vers le cadrage.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "tooLongInMovement",
+        "triggerValue": ""
+      },
+      {
+        "advice": "Prenez 30 secondes de plus pour créer le lien. Un prospect à l'aise parle plus.",
+        "alternatives": [],
+        "triggerType": "tooShortInMovement",
+        "triggerValue": ""
+      },
+      {
+        "advice": "Le prospect semble tendu. Ralentissez, souriez, posez une question légère.",
+        "alternatives": [
+          "\\",
+          ""
+        ],
+        "triggerType": "emotionDetected",
+        "triggerValue": "hesitant"
+      }
+    ]
+  },
+  {
+    "movement": "cadrage",
+    "intent": "Poser le cadre de la conversation : durée, objectifs, déroulé. Le prospect sait à quoi s'attendre → réduit l'anxiété. On obtient un premier 'oui' (micro-engagement).\",\n            prospectExperience: \"Cette personne est organisée et respecte mon temps. Je sais ce qui va se passer.\",\n            goldenRule: \"Celui qui pose le cadre mène la danse — mais en douceur.\",\n            openers: [\n                ConversationStarter(\n                    phrase: \"Pour être sûr de bien utiliser notre temps, voilà ce que je vous propose : je vous pose quelques questions pour comprendre votre situation, ensuite je vous montre si et comment on peut vous aider. Ça vous va ?\",\n                    context: \"Standard — toujours efficace\",\n                    energy: .direct\n                ),\n                ConversationStarter(\n                    phrase: \"J'ai une trentaine de minutes de prévu. Mon objectif : comprendre si on peut vous apporter de la valeur. Pas de pitch, pas de pression. Juste une conversation honnête. OK pour vous ?\",\n                    context: \"Prospect méfiant ou cold outreach\",\n                    energy: .empathetic\n                ),\n                ConversationStarter(\n                    phrase: \"Avant de démarrer — qu'est-ce qui serait le plus utile pour vous dans cet échange ?\",\n                    context: \"Prospect senior / décideur — lui donner le contrôle\",\n                    energy: .curious\n                )\n            ],\n            memorySlots: [\n                MemorySlot(key: \"call_duration\", label: \"Durée dispo\", importance: .important, detectionHints: [\"minutes\", \"temps\", \"réunion après\", \"peu de temps\"]),\n                MemorySlot(key: \"prospect_expectation\", label: \"Ce qu'ils attendent du call\", importance: .important, detectionHints: [\"j'aimerais\", \"je veux savoir\", \"mon objectif\", \"comprendre\"]),\n                MemorySlot(key: \"initial_agreement\", label: \"Accord sur le déroulé\", importance: .critical, detectionHints: [\"oui\", \"ok\", \"d'accord\", \"ça marche\", \"allons-y\", \"parfait\"])\n            ],\n            transitionCues: [\n                \"Dès que le prospect dit 'oui' au cadrage → enchaîner\",\n                \"\"Parfait ! Alors pour commencer, j'aimerais en savoir plus sur...\"\",\n                \"Si le prospect dit directement son problème → passer à Univers/Enjeux\"\n            ],\n            antiPatterns: [\n                \"Cadrage trop long et formel (on n'est pas en réunion corporate)\",\n                \"Ne pas demander l'accord (imposer au lieu de proposer)\",\n                \"Oublier de demander leurs attentes\"\n            ],\n            situationalTips: [\n                SituationalTip(trigger: .keywordDetected(\"peu de temps\"), advice: \"Temps limité détecté. Adaptez : \"Je vais aller à l'essentiel pour respecter votre temps.\"\", alternatives: []),\n                SituationalTip(trigger: .emotionDetected(.confident), advice: \"Le prospect est à l'aise. Bon signe — passez rapidement au contenu.",
+    "prospectExperience": "Cette personne est organisée et respecte mon temps. Je sais ce qui va se passer.",
+    "goldenRule": "Celui qui pose le cadre mène la danse — mais en douceur.",
+    "openers": [
+      {
+        "phrase": "Pour être sûr de bien utiliser notre temps, voilà ce que je vous propose : je vous pose quelques questions pour comprendre votre situation, ensuite je vous montre si et comment on peut vous aider. Ça vous va ?",
+        "context": "Standard — toujours efficace",
+        "energy": "direct"
+      },
+      {
+        "phrase": "J'ai une trentaine de minutes de prévu. Mon objectif : comprendre si on peut vous apporter de la valeur. Pas de pitch, pas de pression. Juste une conversation honnête. OK pour vous ?",
+        "context": "Prospect méfiant ou cold outreach",
+        "energy": "empathetic"
+      },
+      {
+        "phrase": "Avant de démarrer — qu'est-ce qui serait le plus utile pour vous dans cet échange ?",
+        "context": "Prospect senior / décideur — lui donner le contrôle",
+        "energy": "curious"
+      }
+    ],
+    "memorySlots": [
+      {
+        "key": "call_duration",
+        "label": "Durée dispo",
+        "importance": "important",
+        "detectionHints": [
+          "minutes",
+          "temps",
+          "réunion après",
+          "peu de temps"
+        ]
+      },
+      {
+        "key": "prospect_expectation",
+        "label": "Ce qu'ils attendent du call",
+        "importance": "important",
+        "detectionHints": [
+          "j'aimerais",
+          "je veux savoir",
+          "mon objectif",
+          "comprendre"
+        ]
+      },
+      {
+        "key": "initial_agreement",
+        "label": "Accord sur le déroulé",
+        "importance": "critical",
+        "detectionHints": [
+          "oui",
+          "ok",
+          "d'accord",
+          "ça marche",
+          "allons-y",
+          "parfait"
+        ]
+      }
+    ],
+    "transitionCues": [
+      "Dès que le prospect dit 'oui' au cadrage → enchaîner",
+      "\\",
+      "",
+      "Si le prospect dit directement son problème → passer à Univers/Enjeux"
+    ],
+    "antiPatterns": [
+      "Cadrage trop long et formel (on n'est pas en réunion corporate)",
+      "Ne pas demander l'accord (imposer au lieu de proposer)",
+      "Oublier de demander leurs attentes"
+    ],
+    "situationalTips": [
+      {
+        "advice": "Temps limité détecté. Adaptez : \\\"Je vais aller à l'essentiel pour respecter votre temps.\\\"",
+        "alternatives": [],
+        "triggerType": "keywordDetected",
+        "triggerValue": "peu de temps"
+      },
+      {
+        "advice": "Le prospect est à l'aise. Bon signe — passez rapidement au contenu.",
+        "alternatives": [],
+        "triggerType": "emotionDetected",
+        "triggerValue": "confident"
+      }
+    ]
+  },
+  {
+    "movement": "univers",
+    "intent": "Comprendre LE MONDE du prospect : son entreprise, son équipe, ses outils, ses processus, son quotidien. Ce n'est pas un interrogatoire — c'est de la curiosité sincère. Plus on comprend leur univers, plus notre solution sera pertinente.\",\n            prospectExperience: \"Cette personne s'intéresse vraiment à ce que je fais. J'ai envie de lui en dire plus.\",\n            goldenRule: \"Imaginez que vous faites un mini-documentaire sur leur métier. Soyez le journaliste passionné.\",\n            openers: [\n                ConversationStarter(\n                    phrase: \"Pour bien comprendre votre contexte — racontez-moi un peu comment ça se passe chez vous au quotidien ?\",\n                    context: \"Grand ouvert, laisse le prospect choisir ce qu'il partage\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"Si je devais passer une journée dans votre équipe, je verrais quoi ?\",\n                    context: \"Prospect introverti, besoin d'une question concrète\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"Vous êtes [X personnes] dans l'équipe ? Comment vous vous organisez sur [sujet] ?\",\n                    context: \"Quand on a déjà quelques infos\",\n                    energy: .direct\n                ),\n                ConversationStarter(\n                    phrase: \"J'imagine que [hypothèse sur leur quotidien]. C'est à peu près ça ou je suis à côté de la plaque ?\",\n                    context: \"Prospect senior — montrer qu'on a fait ses devoirs\",\n                    energy: .provocative\n                )\n            ],\n            memorySlots: [\n                MemorySlot(key: \"company_name\", label: \"Nom de l'entreprise\", importance: .critical, detectionHints: [\"on s'appelle\", \"notre boîte\", \"l'entreprise\"]),\n                MemorySlot(key: \"company_size\", label: \"Taille (équipe/CA)\", importance: .important, detectionHints: [\"personnes\", \"collaborateurs\", \"salariés\", \"millions\", \"chiffre d'affaires\"]),\n                MemorySlot(key: \"industry\", label: \"Secteur d'activité\", importance: .important, detectionHints: [\"secteur\", \"industrie\", \"marché\"]),\n                MemorySlot(key: \"current_tools\", label: \"Outils actuels\", importance: .important, detectionHints: [\"on utilise\", \"notre outil\", \"Excel\", \"Salesforce\", \"HubSpot\", \"à la main\", \"logiciel\"]),\n                MemorySlot(key: \"current_process\", label: \"Process actuel\", importance: .important, detectionHints: [\"processus\", \"workflow\", \"on fait\", \"étapes\", \"procédure\"]),\n                MemorySlot(key: \"team_structure\", label: \"Organisation de l'équipe\", importance: .helpful, detectionHints: [\"équipe\", \"département\", \"service\", \"pôle\", \"manager\"]),\n                MemorySlot(key: \"recent_changes\", label: \"Changements récents\", importance: .helpful, detectionHints: [\"récemment\", \"depuis peu\", \"on vient de\", \"restructuration\", \"croissance\"])\n            ],\n            transitionCues: [\n                \"Quand on a une image claire de leur monde → creuser les enjeux\",\n                \"Quand le prospect mentionne spontanément un problème\",\n                \"\"C'est très clair. Et dans tout ça, qu'est-ce qui vous pose le plus de difficulté ?\"\",\n                \"\"OK je vois bien le tableau. Qu'est-ce qui vous a poussé à chercher une solution ?\"\"\n            ],\n            antiPatterns: [\n                \"Enchaîner les questions factuelles sans rebondir (interrogatoire)\",\n                \"Poser des questions dont la réponse est sur leur site web\",\n                \"Ne pas écouter les réponses (penser à la question suivante)\",\n                \"Prendre des notes visiblement au lieu de dialoguer\"\n            ],\n            situationalTips: [\n                SituationalTip(trigger: .speakingTooMuch, advice: \"Vous parlez trop dans cette phase. Posez une question ouverte et ÉCOUTEZ.\", alternatives: [\"\"Continuez, c'est passionnant.\"\", \"\"Et comment ça se passe concrètement ?\"\"]),\n                SituationalTip(trigger: .silenceTooLong, advice: \"Silence prolongé. Relancez avec une reformulation.\", alternatives: [\"\"Si je comprends bien, vous [reformulation]... ?\"\", \"\"C'est intéressant. Dites-m'en plus sur [dernier point].\"\"]),\n                SituationalTip(trigger: .keywordDetected(\"problème\"), advice: \"⚡ Le prospect mentionne un problème. Creusez maintenant ou notez pour la phase Enjeux.\", alternatives: [\"\"Ah, dites-m'en plus sur ce point ?\"\", \"\"C'est un sujet qu'on entend souvent. Ça se manifeste comment chez vous ?\"\"]),\n                SituationalTip(trigger: .tooLongInMovement, advice: \"Vous explorez depuis longtemps. Avez-vous assez de contexte pour passer aux enjeux ?",
+    "prospectExperience": "Cette personne s'intéresse vraiment à ce que je fais. J'ai envie de lui en dire plus.",
+    "goldenRule": "Imaginez que vous faites un mini-documentaire sur leur métier. Soyez le journaliste passionné.",
+    "openers": [
+      {
+        "phrase": "Pour bien comprendre votre contexte — racontez-moi un peu comment ça se passe chez vous au quotidien ?",
+        "context": "Grand ouvert, laisse le prospect choisir ce qu'il partage",
+        "energy": "curious"
+      },
+      {
+        "phrase": "Si je devais passer une journée dans votre équipe, je verrais quoi ?",
+        "context": "Prospect introverti, besoin d'une question concrète",
+        "energy": "curious"
+      },
+      {
+        "phrase": "Vous êtes [X personnes] dans l'équipe ? Comment vous vous organisez sur [sujet] ?",
+        "context": "Quand on a déjà quelques infos",
+        "energy": "direct"
+      },
+      {
+        "phrase": "J'imagine que [hypothèse sur leur quotidien]. C'est à peu près ça ou je suis à côté de la plaque ?",
+        "context": "Prospect senior — montrer qu'on a fait ses devoirs",
+        "energy": "provocative"
+      }
+    ],
+    "memorySlots": [
+      {
+        "key": "company_name",
+        "label": "Nom de l'entreprise",
+        "importance": "critical",
+        "detectionHints": [
+          "on s'appelle",
+          "notre boîte",
+          "l'entreprise"
+        ]
+      },
+      {
+        "key": "company_size",
+        "label": "Taille (équipe/CA)",
+        "importance": "important",
+        "detectionHints": [
+          "personnes",
+          "collaborateurs",
+          "salariés",
+          "millions",
+          "chiffre d'affaires"
+        ]
+      },
+      {
+        "key": "industry",
+        "label": "Secteur d'activité",
+        "importance": "important",
+        "detectionHints": [
+          "secteur",
+          "industrie",
+          "marché"
+        ]
+      },
+      {
+        "key": "current_tools",
+        "label": "Outils actuels",
+        "importance": "important",
+        "detectionHints": [
+          "on utilise",
+          "notre outil",
+          "Excel",
+          "Salesforce",
+          "HubSpot",
+          "à la main",
+          "logiciel"
+        ]
+      },
+      {
+        "key": "current_process",
+        "label": "Process actuel",
+        "importance": "important",
+        "detectionHints": [
+          "processus",
+          "workflow",
+          "on fait",
+          "étapes",
+          "procédure"
+        ]
+      },
+      {
+        "key": "team_structure",
+        "label": "Organisation de l'équipe",
+        "importance": "helpful",
+        "detectionHints": [
+          "équipe",
+          "département",
+          "service",
+          "pôle",
+          "manager"
+        ]
+      },
+      {
+        "key": "recent_changes",
+        "label": "Changements récents",
+        "importance": "helpful",
+        "detectionHints": [
+          "récemment",
+          "depuis peu",
+          "on vient de",
+          "restructuration",
+          "croissance"
+        ]
+      }
+    ],
+    "transitionCues": [
+      "Quand on a une image claire de leur monde → creuser les enjeux",
+      "Quand le prospect mentionne spontanément un problème",
+      "\\",
+      "",
+      "\\",
+      ""
+    ],
+    "antiPatterns": [
+      "Enchaîner les questions factuelles sans rebondir (interrogatoire)",
+      "Poser des questions dont la réponse est sur leur site web",
+      "Ne pas écouter les réponses (penser à la question suivante)",
+      "Prendre des notes visiblement au lieu de dialoguer"
+    ],
+    "situationalTips": [
+      {
+        "advice": "Vous parlez trop dans cette phase. Posez une question ouverte et ÉCOUTEZ.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "speakingTooMuch",
+        "triggerValue": ""
+      },
+      {
+        "advice": "Silence prolongé. Relancez avec une reformulation.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "silenceTooLong",
+        "triggerValue": ""
+      },
+      {
+        "advice": "⚡ Le prospect mentionne un problème. Creusez maintenant ou notez pour la phase Enjeux.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "keywordDetected",
+        "triggerValue": "problème"
+      },
+      {
+        "advice": "Vous explorez depuis longtemps. Avez-vous assez de contexte pour passer aux enjeux ?",
+        "alternatives": [],
+        "triggerType": "tooLongInMovement",
+        "triggerValue": ""
+      }
+    ]
+  },
+  {
+    "movement": "enjeux",
+    "intent": "Faire émerger les VRAIS challenges, pas ceux de surface. Le prospect doit verbaliser sa douleur lui-même — c'est 10× plus puissant que si on la lui dit. La clé : poser des questions qui ouvrent, pas qui ferment.\",\n            prospectExperience: \"Cette personne pose des questions pertinentes qui me font réfléchir à des choses que je n'avais pas formulées.\",\n            goldenRule: \"Ne dites jamais au prospect qu'il a un problème. Faites-le découvrir lui-même.\",\n            openers: [\n                ConversationStarter(\n                    phrase: \"Dans tout ce que vous m'avez décrit, qu'est-ce qui vous prend le plus d'énergie ?\",\n                    context: \"Après une bonne phase Univers — on zoome sur la douleur\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"Si vous pouviez changer UNE chose dans votre [process/outil/quotidien], ce serait quoi ?\",\n                    context: \"Quand le prospect n'exprime pas de problème spontanément\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"Qu'est-ce qui vous a fait chercher une solution maintenant, plutôt qu'il y a 6 mois ?\",\n                    context: \"Inbound lead — comprendre le déclencheur\",\n                    energy: .direct\n                ),\n                ConversationStarter(\n                    phrase: \"D'après ce que je vois dans votre secteur, beaucoup d'entreprises comme la vôtre galèrent avec [X]. C'est votre cas aussi ?\",\n                    context: \"Prospect réservé — proposer une hypothèse à valider\",\n                    energy: .provocative\n                )\n            ],\n            memorySlots: [\n                MemorySlot(key: \"main_pain\", label: \"Douleur principale\", importance: .critical, detectionHints: [\"problème\", \"difficulté\", \"galère\", \"frustrant\", \"compliqué\", \"pénible\", \"perd du temps\", \"inefficace\", \"coûte cher\"]),\n                MemorySlot(key: \"pain_trigger\", label: \"Déclencheur (pourquoi maintenant)\", importance: .critical, detectionHints: [\"maintenant\", \"récemment\", \"depuis\", \"ça fait\", \"urgence\", \"croissance\", \"perdu un client\"]),\n                MemorySlot(key: \"secondary_pains\", label: \"Douleurs secondaires\", importance: .important, detectionHints: [\"aussi\", \"en plus\", \"autre chose\", \"et puis\"]),\n                MemorySlot(key: \"failed_attempts\", label: \"Ce qu'ils ont déjà essayé\", importance: .important, detectionHints: [\"on a essayé\", \"on a testé\", \"avant on faisait\", \"ça n'a pas marché\"])\n            ],\n            transitionCues: [\n                \"Quand une douleur claire est identifiée → approfondir son impact\",\n                \"\"C'est un vrai sujet. Et concrètement, ça a quel impact sur votre [quotidien/CA/équipe] ?\"\",\n                \"Quand le prospect commence à quantifier de lui-même\"\n            ],\n            antiPatterns: [\n                \"Poser des questions fermées (oui/non) au lieu de questions ouvertes\",\n                \"Suggérer la réponse dans la question (\"Vous n'avez pas de problème avec X ?\")\",\n                \"Enchaîner 3+ questions sans reformuler ou accuser réception\",\n                \"Sauter sur la solution dès qu'un problème est mentionné (trop tôt !)\"\n            ],\n            situationalTips: [\n                SituationalTip(trigger: .emotionDetected(.frustrated), advice: \"Frustration détectée — la douleur est réelle. Laissez-les vider leur sac. Ne coupez PAS.\", alternatives: [\"\"Je comprends. C'est le genre de situation qui use...\"\", \"\"Continuez, c'est important que je comprenne bien l'ampleur.\"\"]),\n                SituationalTip(trigger: .emotionDetected(.neutral), advice: \"Trop neutre — vous n'avez pas encore trouvé la vraie douleur. Creusez.\", alternatives: [\"\"Et si ça ne change pas dans les 6 prochains mois, qu'est-ce qui se passe ?\"\", \"\"Ça a l'air gérable pour l'instant. Qu'est-ce qui pourrait mal tourner ?\"\"]),\n                SituationalTip(trigger: .memorySlotFilled(\"main_pain\"), advice: \"✅ Douleur identifiée ! Reformulez puis passez à l'impact.\", alternatives: [\"\"Si je résume : votre problème principal, c'est [X]. C'est bien ça ?\"",
+    "prospectExperience": "Cette personne pose des questions pertinentes qui me font réfléchir à des choses que je n'avais pas formulées.",
+    "goldenRule": "Ne dites jamais au prospect qu'il a un problème. Faites-le découvrir lui-même.",
+    "openers": [
+      {
+        "phrase": "Dans tout ce que vous m'avez décrit, qu'est-ce qui vous prend le plus d'énergie ?",
+        "context": "Après une bonne phase Univers — on zoome sur la douleur",
+        "energy": "curious"
+      },
+      {
+        "phrase": "Si vous pouviez changer UNE chose dans votre [process/outil/quotidien], ce serait quoi ?",
+        "context": "Quand le prospect n'exprime pas de problème spontanément",
+        "energy": "curious"
+      },
+      {
+        "phrase": "Qu'est-ce qui vous a fait chercher une solution maintenant, plutôt qu'il y a 6 mois ?",
+        "context": "Inbound lead — comprendre le déclencheur",
+        "energy": "direct"
+      },
+      {
+        "phrase": "D'après ce que je vois dans votre secteur, beaucoup d'entreprises comme la vôtre galèrent avec [X]. C'est votre cas aussi ?",
+        "context": "Prospect réservé — proposer une hypothèse à valider",
+        "energy": "provocative"
+      }
+    ],
+    "memorySlots": [
+      {
+        "key": "main_pain",
+        "label": "Douleur principale",
+        "importance": "critical",
+        "detectionHints": [
+          "problème",
+          "difficulté",
+          "galère",
+          "frustrant",
+          "compliqué",
+          "pénible",
+          "perd du temps",
+          "inefficace",
+          "coûte cher"
+        ]
+      },
+      {
+        "key": "pain_trigger",
+        "label": "Déclencheur (pourquoi maintenant)",
+        "importance": "critical",
+        "detectionHints": [
+          "maintenant",
+          "récemment",
+          "depuis",
+          "ça fait",
+          "urgence",
+          "croissance",
+          "perdu un client"
+        ]
+      },
+      {
+        "key": "secondary_pains",
+        "label": "Douleurs secondaires",
+        "importance": "important",
+        "detectionHints": [
+          "aussi",
+          "en plus",
+          "autre chose",
+          "et puis"
+        ]
+      },
+      {
+        "key": "failed_attempts",
+        "label": "Ce qu'ils ont déjà essayé",
+        "importance": "important",
+        "detectionHints": [
+          "on a essayé",
+          "on a testé",
+          "avant on faisait",
+          "ça n'a pas marché"
+        ]
+      }
+    ],
+    "transitionCues": [
+      "Quand une douleur claire est identifiée → approfondir son impact",
+      "\\"
+    ],
+    "antiPatterns": [
+      "Poser des questions fermées (oui/non) au lieu de questions ouvertes",
+      "Suggérer la réponse dans la question (\\",
+      ")",
+      "Enchaîner 3+ questions sans reformuler ou accuser réception",
+      "Sauter sur la solution dès qu'un problème est mentionné (trop tôt !)"
+    ],
+    "situationalTips": [
+      {
+        "advice": "Frustration détectée — la douleur est réelle. Laissez-les vider leur sac. Ne coupez PAS.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "emotionDetected",
+        "triggerValue": "frustrated"
+      },
+      {
+        "advice": "Trop neutre — vous n'avez pas encore trouvé la vraie douleur. Creusez.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "emotionDetected",
+        "triggerValue": "neutral"
+      },
+      {
+        "advice": "✅ Douleur identifiée ! Reformulez puis passez à l'impact.",
+        "alternatives": [
+          "\\",
+          ""
+        ],
+        "triggerType": "memorySlotFilled",
+        "triggerValue": "main_pain"
+      }
+    ]
+  },
+  {
+    "movement": "profondeur",
+    "intent": "Quantifier et amplifier l'impact de la douleur. Sans chiffres, pas d'urgence. Le prospect doit réaliser que le statu quo est PLUS coûteux que le changement. C'est ici que la motivation d'achat se crée.\",\n            prospectExperience: \"Je n'avais pas réalisé à quel point ce problème nous coûtait. Il faut qu'on fasse quelque chose.\",\n            goldenRule: \"Le coût du statu quo doit être supérieur au coût du changement. Faites le calcul ensemble.\",\n            openers: [\n                ConversationStarter(\n                    phrase: \"Quand vous dites que [douleur], concrètement ça représente quoi en temps perdu chaque semaine ?\",\n                    context: \"Après identification de la douleur — quantifier\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"Si on ne fait rien pendant encore 12 mois, qu'est-ce qui se passe ?\",\n                    context: \"Prospect qui minimise le problème\",\n                    energy: .provocative\n                ),\n                ConversationStarter(\n                    phrase: \"Ça impacte juste vous ou il y a un effet sur l'équipe / les clients aussi ?\",\n                    context: \"Élargir le scope de l'impact\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"J'ai un client dans votre secteur qui avait le même problème. Il a calculé que ça lui coûtait [X€/an]. Ça vous parle comme ordre de grandeur ?\",\n                    context: \"Aider le prospect à chiffrer via un benchmark\",\n                    energy: .direct\n                )\n            ],\n            memorySlots: [\n                MemorySlot(key: \"pain_cost_time\", label: \"Coût en temps\", importance: .critical, detectionHints: [\"heures\", \"jours\", \"semaines\", \"temps perdu\", \"temps passé\"]),\n                MemorySlot(key: \"pain_cost_money\", label: \"Coût financier\", importance: .critical, detectionHints: [\"euros\", \"€\", \"coûte\", \"manque à gagner\", \"perte\", \"chiffre d'affaires\"]),\n                MemorySlot(key: \"pain_cost_human\", label: \"Impact humain\", importance: .important, detectionHints: [\"stressé\", \"turnover\", \"démotivé\", \"burn\", \"recrutement\", \"équipe\"]),\n                MemorySlot(key: \"ripple_effects\", label: \"Effets en cascade\", importance: .helpful, detectionHints: [\"en plus\", \"du coup\", \"conséquence\", \"ça affecte aussi\", \"impact sur\"])\n            ],\n            transitionCues: [\n                \"Quand le prospect a verbalisé le coût de l'inaction\",\n                \"\"C'est clair que c'est un vrai manque à gagner. Et dans l'idéal, ça ressemblerait à quoi la situation ?\"\",\n                \"Quand le prospect dit \"il faut qu'on fasse quelque chose\"\"\n            ],\n            antiPatterns: [\n                \"Exagérer le problème ou manipuler les chiffres\",\n                \"Mettre le prospect mal à l'aise avec trop de pression\",\n                \"Répondre \"oui c'est grave\" — laissez-les arriver à cette conclusion seuls\"\n            ],\n            situationalTips: [\n                SituationalTip(trigger: .memorySlotMissing(\"pain_cost_time\"), advice: \"Vous n'avez pas encore de chiffre. Aidez-les à estimer.\", alternatives: [\"\"À la louche, vous diriez combien d'heures par semaine ?\"\", \"\"Si votre équipe passe ne serait-ce que 2h par semaine dessus, ça fait 100h par an...\"\"]),\n                SituationalTip(trigger: .emotionDetected(.hesitant), advice: \"Le prospect hésite à chiffrer. Normal, c'est engageant. Proposez un range.\", alternatives: [\"\"On parle de dizaines, de centaines, ou de milliers d'euros ?\"\", \"\"Pas besoin d'être précis — un ordre de grandeur suffit.\"",
+    "prospectExperience": "Je n'avais pas réalisé à quel point ce problème nous coûtait. Il faut qu'on fasse quelque chose.",
+    "goldenRule": "Le coût du statu quo doit être supérieur au coût du changement. Faites le calcul ensemble.",
+    "openers": [
+      {
+        "phrase": "Quand vous dites que [douleur], concrètement ça représente quoi en temps perdu chaque semaine ?",
+        "context": "Après identification de la douleur — quantifier",
+        "energy": "curious"
+      },
+      {
+        "phrase": "Si on ne fait rien pendant encore 12 mois, qu'est-ce qui se passe ?",
+        "context": "Prospect qui minimise le problème",
+        "energy": "provocative"
+      },
+      {
+        "phrase": "Ça impacte juste vous ou il y a un effet sur l'équipe / les clients aussi ?",
+        "context": "Élargir le scope de l'impact",
+        "energy": "curious"
+      },
+      {
+        "phrase": "J'ai un client dans votre secteur qui avait le même problème. Il a calculé que ça lui coûtait [X€/an]. Ça vous parle comme ordre de grandeur ?",
+        "context": "Aider le prospect à chiffrer via un benchmark",
+        "energy": "direct"
+      }
+    ],
+    "memorySlots": [
+      {
+        "key": "pain_cost_time",
+        "label": "Coût en temps",
+        "importance": "critical",
+        "detectionHints": [
+          "heures",
+          "jours",
+          "semaines",
+          "temps perdu",
+          "temps passé"
+        ]
+      },
+      {
+        "key": "pain_cost_money",
+        "label": "Coût financier",
+        "importance": "critical",
+        "detectionHints": [
+          "euros",
+          "€",
+          "coûte",
+          "manque à gagner",
+          "perte",
+          "chiffre d'affaires"
+        ]
+      },
+      {
+        "key": "pain_cost_human",
+        "label": "Impact humain",
+        "importance": "important",
+        "detectionHints": [
+          "stressé",
+          "turnover",
+          "démotivé",
+          "burn",
+          "recrutement",
+          "équipe"
+        ]
+      },
+      {
+        "key": "ripple_effects",
+        "label": "Effets en cascade",
+        "importance": "helpful",
+        "detectionHints": [
+          "en plus",
+          "du coup",
+          "conséquence",
+          "ça affecte aussi",
+          "impact sur"
+        ]
+      }
+    ],
+    "transitionCues": [
+      "Quand le prospect a verbalisé le coût de l'inaction",
+      "\\",
+      "",
+      "Quand le prospect dit \\",
+      ""
+    ],
+    "antiPatterns": [
+      "Exagérer le problème ou manipuler les chiffres",
+      "Mettre le prospect mal à l'aise avec trop de pression",
+      "Répondre \\",
+      " — laissez-les arriver à cette conclusion seuls"
+    ],
+    "situationalTips": [
+      {
+        "advice": "Vous n'avez pas encore de chiffre. Aidez-les à estimer.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "memorySlotMissing",
+        "triggerValue": "pain_cost_time"
+      },
+      {
+        "advice": "Le prospect hésite à chiffrer. Normal, c'est engageant. Proposez un range.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "emotionDetected",
+        "triggerValue": "hesitant"
+      }
+    ]
+  },
+  {
+    "movement": "vision",
+    "intent": "Faire visualiser le futur idéal. Après la douleur, on bascule vers le DÉSIR. Le prospect imagine sa vie avec le problème résolu → crée la motivation positive. Ses mots deviennent notre argumentaire de vente.\",\n            prospectExperience: \"J'arrive à voir clairement ce que je veux. Et cette personne m'aide à le formuler.\",\n            goldenRule: \"Faites-les rêver avec LEURS mots, pas les vôtres. Ce sont eux qui vendent.\",\n            openers: [\n                ConversationStarter(\n                    phrase: \"Si on avance de 6 mois et que tout est résolu, ça ressemble à quoi votre quotidien ?\",\n                    context: \"Standard — projection temporelle\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"Dans l'idéal, qu'est-ce qui se passerait quand [situation problématique] arrive ?\",\n                    context: \"Repartir du problème pour construire la solution idéale\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"Qu'est-ce que ça changerait pour votre équipe si ce problème disparaissait demain ?\",\n                    context: \"Impact humain / équipe\",\n                    energy: .warm\n                ),\n                ConversationStarter(\n                    phrase: \"Vous seriez prêt à investir quoi pour que [situation idéale] devienne réalité ?\",\n                    context: \"Bridge subtil vers le budget — avancé\",\n                    energy: .direct\n                )\n            ],\n            memorySlots: [\n                MemorySlot(key: \"desired_outcome\", label: \"Résultat souhaité\", importance: .critical, detectionHints: [\"idéal\", \"je voudrais\", \"si seulement\", \"l'objectif\", \"rêve\", \"parfait\"]),\n                MemorySlot(key: \"success_criteria\", label: \"Critères de succès\", importance: .critical, detectionHints: [\"réussi si\", \"mesurer\", \"KPI\", \"indicateur\", \"savoir que ça marche\"]),\n                MemorySlot(key: \"emotional_payoff\", label: \"Bénéfice émotionnel\", importance: .important, detectionHints: [\"sérénité\", \"confiance\", \"tranquille\", \"fier\", \"content\"])\n            ],\n            transitionCues: [\n                \"Quand le prospect a décrit sa vision clairement\",\n                \"\"Super, c'est limpide. Maintenant j'ai juste quelques questions pratiques avant de vous montrer comment on peut y arriver.\"\",\n                \"Transition naturelle vers la qualification\"\n            ],\n            antiPatterns: [\n                \"Imposer votre vision de la solution au lieu de laisser la leur émerger\",\n                \"Couper le prospect quand il rêve à voix haute\",\n                \"Être trop terre-à-terre quand ils sont dans l'émotion\"\n            ],\n            situationalTips: [\n                SituationalTip(trigger: .emotionDetected(.enthusiastic), advice: \"🟢 Enthousiasme ! Ils se projettent. Laissez-les parler et notez LEURS mots — vous les réutiliserez en présentation.\", alternatives: []),\n                SituationalTip(trigger: .emotionDetected(.disengaged), advice: \"Le prospect ne se projette pas. Revenez à la douleur concrète.\", alternatives: [\"\"Revenons à [douleur]. Qu'est-ce qui rendrait votre vie plus simple ?\"",
+    "prospectExperience": "J'arrive à voir clairement ce que je veux. Et cette personne m'aide à le formuler.",
+    "goldenRule": "Faites-les rêver avec LEURS mots, pas les vôtres. Ce sont eux qui vendent.",
+    "openers": [
+      {
+        "phrase": "Si on avance de 6 mois et que tout est résolu, ça ressemble à quoi votre quotidien ?",
+        "context": "Standard — projection temporelle",
+        "energy": "curious"
+      },
+      {
+        "phrase": "Dans l'idéal, qu'est-ce qui se passerait quand [situation problématique] arrive ?",
+        "context": "Repartir du problème pour construire la solution idéale",
+        "energy": "curious"
+      },
+      {
+        "phrase": "Qu'est-ce que ça changerait pour votre équipe si ce problème disparaissait demain ?",
+        "context": "Impact humain / équipe",
+        "energy": "warm"
+      },
+      {
+        "phrase": "Vous seriez prêt à investir quoi pour que [situation idéale] devienne réalité ?",
+        "context": "Bridge subtil vers le budget — avancé",
+        "energy": "direct"
+      }
+    ],
+    "memorySlots": [
+      {
+        "key": "desired_outcome",
+        "label": "Résultat souhaité",
+        "importance": "critical",
+        "detectionHints": [
+          "idéal",
+          "je voudrais",
+          "si seulement",
+          "l'objectif",
+          "rêve",
+          "parfait"
+        ]
+      },
+      {
+        "key": "success_criteria",
+        "label": "Critères de succès",
+        "importance": "critical",
+        "detectionHints": [
+          "réussi si",
+          "mesurer",
+          "KPI",
+          "indicateur",
+          "savoir que ça marche"
+        ]
+      },
+      {
+        "key": "emotional_payoff",
+        "label": "Bénéfice émotionnel",
+        "importance": "important",
+        "detectionHints": [
+          "sérénité",
+          "confiance",
+          "tranquille",
+          "fier",
+          "content"
+        ]
+      }
+    ],
+    "transitionCues": [
+      "Quand le prospect a décrit sa vision clairement",
+      "\\",
+      "",
+      "Transition naturelle vers la qualification"
+    ],
+    "antiPatterns": [
+      "Imposer votre vision de la solution au lieu de laisser la leur émerger",
+      "Couper le prospect quand il rêve à voix haute",
+      "Être trop terre-à-terre quand ils sont dans l'émotion"
+    ],
+    "situationalTips": [
+      {
+        "advice": "🟢 Enthousiasme ! Ils se projettent. Laissez-les parler et notez LEURS mots — vous les réutiliserez en présentation.",
+        "alternatives": [],
+        "triggerType": "emotionDetected",
+        "triggerValue": "enthusiastic"
+      },
+      {
+        "advice": "Le prospect ne se projette pas. Revenez à la douleur concrète.",
+        "alternatives": [
+          "\\",
+          ""
+        ],
+        "triggerType": "emotionDetected",
+        "triggerValue": "disengaged"
+      }
+    ]
+  },
+  {
+    "movement": "qualification",
+    "intent": "S'assurer que le deal est réaliste AVANT de présenter : budget, décideur, timing. Mais en douceur — tissé dans la conversation, pas en checklist. Un prospect non qualifié = du temps perdu pour les deux parties.\",\n            prospectExperience: \"Des questions logiques et légitimes. Je vois que cette personne est pro.\",\n            goldenRule: \"Qualifiez par curiosité, pas par interrogatoire. Chaque question BANT peut être une conversation.\",\n            openers: [\n                ConversationStarter(\n                    phrase: \"Pour vous proposer quelque chose de réaliste, j'ai quelques questions pratiques — ça vous va ?\",\n                    context: \"Transition explicite vers qualif\",\n                    energy: .direct\n                ),\n                ConversationStarter(\n                    phrase: \"Côté timing, vous avez une date en tête pour mettre ça en place ?\",\n                    context: \"Timeline — le plus naturel à poser\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"Si on trouve la bonne solution, comment ça se passe pour valider chez vous ?\",\n                    context: \"Processus de décision sans dire \"qui est le décideur ?\"\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"Pour être transparent, nos solutions se situent autour de [fourchette]. Ça vous semble dans les clous ?\",\n                    context: \"Budget — direct et honnête\",\n                    energy: .direct\n                )\n            ],\n            memorySlots: [\n                MemorySlot(key: \"budget_range\", label: \"Budget / Enveloppe\", importance: .critical, detectionHints: [\"budget\", \"enveloppe\", \"euros\", \"€\", \"investir\", \"investissement\", \"coût\", \"cher\", \"abordable\"]),\n                MemorySlot(key: \"decision_maker\", label: \"Décideur\", importance: .critical, detectionHints: [\"mon boss\", \"direction\", \"comité\", \"je décide\", \"je suis décideur\", \"valider\", \"DAF\", \"DG\"]),\n                MemorySlot(key: \"decision_process\", label: \"Process de décision\", importance: .important, detectionHints: [\"étapes\", \"validation\", \"comité\", \"appel d'offres\", \"procurement\"]),\n                MemorySlot(key: \"timeline\", label: \"Timeline / Urgence\", importance: .critical, detectionHints: [\"quand\", \"deadline\", \"urgent\", \"trimestre\", \"mois\", \"semaine\", \"septembre\", \"janvier\"]),\n                MemorySlot(key: \"competition\", label: \"Alternatives considérées\", importance: .important, detectionHints: [\"concurrent\", \"alternative\", \"comparé\", \"aussi vu\", \"benchmark\"]),\n                MemorySlot(key: \"blocking_risks\", label: \"Risques de blocage\", importance: .helpful, detectionHints: [\"risque\", \"bloquer\", \"retarder\", \"compliqué\", \"politique interne\"])\n            ],\n            transitionCues: [\n                \"Budget + Décideur + Timeline identifiés → prêt à présenter\",\n                \"\"Parfait, j'ai une image claire. Laissez-moi vous montrer exactement comment on peut résoudre [douleur].\"\",\n                \"Si le prospect n'est pas qualifié → reformuler, ajuster, ou qualifier out poliment\"\n            ],\n            antiPatterns: [\n                \"\"Qui est le décideur ?\" (trop brutal, vexant)\",\n                \"\"Quel est votre budget ?\" point blanc (trop direct trop tôt)\",\n                \"Enchaîner BANT comme un formulaire\",\n                \"Qualifier sans avoir exploré les enjeux d'abord\"\n            ],\n            situationalTips: [\n                SituationalTip(trigger: .memorySlotMissing(\"budget_range\"), advice: \"Budget non abordé. Pensez à l'introduire avant la présentation.\", alternatives: [\"\"Côté investissement, vous avez une idée de fourchette ou c'est encore flou ?\"\", \"\"Pour calibrer ma proposition, vous avez un budget déjà alloué ou c'est à définir ?\"\"]),\n                SituationalTip(trigger: .memorySlotMissing(\"decision_maker\"), advice: \"On ne sait pas qui décide. Important avant de closer.\", alternatives: [\"\"Si on arrive à quelque chose qui vous plaît, quelles seraient les étapes pour concrétiser ?\"\", \"\"Vous avez la main pour avancer ou il faut impliquer d'autres personnes ?\"\"]),\n                SituationalTip(trigger: .keywordDetected(\"réfléchir\"), advice: \"⚠️ \"Réfléchir\" = souvent un non déguisé ou un bloqueur caché. Creusez.\", alternatives: [\"\"Bien sûr. Pour que votre réflexion soit utile, qu'est-ce qui vous fait hésiter ?\"",
+    "prospectExperience": "Des questions logiques et légitimes. Je vois que cette personne est pro.",
+    "goldenRule": "Qualifiez par curiosité, pas par interrogatoire. Chaque question BANT peut être une conversation.",
+    "openers": [
+      {
+        "phrase": "Pour vous proposer quelque chose de réaliste, j'ai quelques questions pratiques — ça vous va ?",
+        "context": "Transition explicite vers qualif",
+        "energy": "direct"
+      },
+      {
+        "phrase": "Côté timing, vous avez une date en tête pour mettre ça en place ?",
+        "context": "Timeline — le plus naturel à poser",
+        "energy": "curious"
+      },
+      {
+        "phrase": "Si on trouve la bonne solution, comment ça se passe pour valider chez vous ?",
+        "context": "Processus de décision sans dire \\\"qui est le décideur ?\\\"",
+        "energy": "curious"
+      },
+      {
+        "phrase": "Pour être transparent, nos solutions se situent autour de [fourchette]. Ça vous semble dans les clous ?",
+        "context": "Budget — direct et honnête",
+        "energy": "direct"
+      }
+    ],
+    "memorySlots": [
+      {
+        "key": "budget_range",
+        "label": "Budget / Enveloppe",
+        "importance": "critical",
+        "detectionHints": [
+          "budget",
+          "enveloppe",
+          "euros",
+          "€",
+          "investir",
+          "investissement",
+          "coût",
+          "cher",
+          "abordable"
+        ]
+      },
+      {
+        "key": "decision_maker",
+        "label": "Décideur",
+        "importance": "critical",
+        "detectionHints": [
+          "mon boss",
+          "direction",
+          "comité",
+          "je décide",
+          "je suis décideur",
+          "valider",
+          "DAF",
+          "DG"
+        ]
+      },
+      {
+        "key": "decision_process",
+        "label": "Process de décision",
+        "importance": "important",
+        "detectionHints": [
+          "étapes",
+          "validation",
+          "comité",
+          "appel d'offres",
+          "procurement"
+        ]
+      },
+      {
+        "key": "timeline",
+        "label": "Timeline / Urgence",
+        "importance": "critical",
+        "detectionHints": [
+          "quand",
+          "deadline",
+          "urgent",
+          "trimestre",
+          "mois",
+          "semaine",
+          "septembre",
+          "janvier"
+        ]
+      },
+      {
+        "key": "competition",
+        "label": "Alternatives considérées",
+        "importance": "important",
+        "detectionHints": [
+          "concurrent",
+          "alternative",
+          "comparé",
+          "aussi vu",
+          "benchmark"
+        ]
+      },
+      {
+        "key": "blocking_risks",
+        "label": "Risques de blocage",
+        "importance": "helpful",
+        "detectionHints": [
+          "risque",
+          "bloquer",
+          "retarder",
+          "compliqué",
+          "politique interne"
+        ]
+      }
+    ],
+    "transitionCues": [
+      "Budget + Décideur + Timeline identifiés → prêt à présenter",
+      "\\"
+    ],
+    "antiPatterns": [
+      "\\",
+      " (trop brutal, vexant)",
+      "\\",
+      " point blanc (trop direct trop tôt)",
+      "Enchaîner BANT comme un formulaire",
+      "Qualifier sans avoir exploré les enjeux d'abord"
+    ],
+    "situationalTips": [
+      {
+        "advice": "Budget non abordé. Pensez à l'introduire avant la présentation.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "memorySlotMissing",
+        "triggerValue": "budget_range"
+      },
+      {
+        "advice": "On ne sait pas qui décide. Important avant de closer.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "memorySlotMissing",
+        "triggerValue": "decision_maker"
+      },
+      {
+        "advice": "⚠️ \\\"Réfléchir\\\" = souvent un non déguisé ou un bloqueur caché. Creusez.",
+        "alternatives": [
+          "\\",
+          ""
+        ],
+        "triggerType": "keywordDetected",
+        "triggerValue": "réfléchir"
+      }
+    ]
+  },
+  {
+    "movement": "proposition",
+    "intent": "Présenter la solution en la mappant point par point sur ce qui a été dit. Chaque feature est justifiée par une douleur exprimée et un résultat souhaité. Les mots du PROSPECT sont réutilisés, pas les nôtres.\",\n            prospectExperience: \"C'est exactement ce dont j'ai besoin. Cette personne a compris ma situation.\",\n            goldenRule: \"Jamais de feature sans bénéfice. Jamais de bénéfice sans lien avec LEUR douleur.\",\n            openers: [\n                ConversationStarter(\n                    phrase: \"Maintenant que j'ai bien compris votre situation, voilà ce que je vous propose. Je vais être concret et vous montrer comment on résout exactement [douleur principale].\",\n                    context: \"Standard — bridge douleur → solution\",\n                    energy: .direct\n                ),\n                ConversationStarter(\n                    phrase: \"Vous m'avez dit que [résumé douleur + coût]. On a aidé [type de client similaire] à passer de [situation avant] à [résultat]. Voilà comment.\",\n                    context: \"Avec cas client — social proof\",\n                    energy: .direct\n                ),\n                ConversationStarter(\n                    phrase: \"Plutôt que de tout vous montrer, je vais me concentrer sur les 3 points qui comptent le plus pour vous. On avait dit : [1], [2], [3]. C'est toujours ça ?\",\n                    context: \"Prospect pressé ou analytique\",\n                    energy: .direct\n                )\n            ],\n            memorySlots: [\n                MemorySlot(key: \"features_shown\", label: \"Features présentées\", importance: .helpful, detectionHints: []),\n                MemorySlot(key: \"prospect_reactions\", label: \"Réactions positives\", importance: .important, detectionHints: [\"intéressant\", \"ah oui\", \"pas mal\", \"ça c'est bien\", \"exactement\"]),\n                MemorySlot(key: \"questions_asked\", label: \"Questions posées par prospect\", importance: .important, detectionHints: [\"comment\", \"est-ce que\", \"et si\", \"ça marche avec\"])\n            ],\n            transitionCues: [\n                \"Quand les points clés sont couverts et le prospect a des questions/objections\",\n                \"\"Voilà pour l'essentiel. Qu'est-ce qui vous plaît ? Qu'est-ce qui vous inquiète ?\"\",\n                \"Si le prospect dit \"c'est super\" → engager directement\"\n            ],\n            antiPatterns: [\n                \"Feature dump : tout montrer sans lien avec le besoin\",\n                \"Monologue de 15 minutes sans interaction\",\n                \"Utiliser du jargon technique que le prospect ne comprend pas\",\n                \"Ne pas vérifier la compréhension / l'intérêt en cours de route\"\n            ],\n            situationalTips: [\n                SituationalTip(trigger: .speakingTooMuch, advice: \"⚠️ Vous présentez depuis longtemps sans interaction. Faites une pause.\", alternatives: [\"\"Je m'arrête là — qu'est-ce que vous en pensez pour l'instant ?\"\", \"\"Avant de continuer, ça résonne avec votre besoin ?\"\"]),\n                SituationalTip(trigger: .emotionDetected(.disengaged), advice: \"🔴 Le prospect décroche ! Arrêtez de présenter. Posez une question.\", alternatives: [\"\"Je vois que je vous ai peut-être noyé d'info. Qu'est-ce qui vous serait le plus utile ?\"\", \"\"Attendez, je veux être sûr d'être pertinent. Qu'est-ce qui vous intéresse le plus ?\"\"]),\n                SituationalTip(trigger: .emotionDetected(.enthusiastic), advice: \"🟢 Enthousiasme ! Ancrez le positif.\", alternatives: [\"\"Je vois que ça vous parle. Dites-moi ce qui vous plaît le plus.\"\", \"\"C'est exactement la réaction qu'ont nos clients qui obtiennent les meilleurs résultats.\"",
+    "prospectExperience": "C'est exactement ce dont j'ai besoin. Cette personne a compris ma situation.",
+    "goldenRule": "Jamais de feature sans bénéfice. Jamais de bénéfice sans lien avec LEUR douleur.",
+    "openers": [
+      {
+        "phrase": "Maintenant que j'ai bien compris votre situation, voilà ce que je vous propose. Je vais être concret et vous montrer comment on résout exactement [douleur principale].",
+        "context": "Standard — bridge douleur → solution",
+        "energy": "direct"
+      },
+      {
+        "phrase": "Vous m'avez dit que [résumé douleur + coût]. On a aidé [type de client similaire] à passer de [situation avant] à [résultat]. Voilà comment.",
+        "context": "Avec cas client — social proof",
+        "energy": "direct"
+      },
+      {
+        "phrase": "Plutôt que de tout vous montrer, je vais me concentrer sur les 3 points qui comptent le plus pour vous. On avait dit : [1], [2], [3]. C'est toujours ça ?",
+        "context": "Prospect pressé ou analytique",
+        "energy": "direct"
+      }
+    ],
+    "memorySlots": [
+      {
+        "key": "features_shown",
+        "label": "Features présentées",
+        "importance": "helpful",
+        "detectionHints": []
+      },
+      {
+        "key": "prospect_reactions",
+        "label": "Réactions positives",
+        "importance": "important",
+        "detectionHints": [
+          "intéressant",
+          "ah oui",
+          "pas mal",
+          "ça c'est bien",
+          "exactement"
+        ]
+      },
+      {
+        "key": "questions_asked",
+        "label": "Questions posées par prospect",
+        "importance": "important",
+        "detectionHints": [
+          "comment",
+          "est-ce que",
+          "et si",
+          "ça marche avec"
+        ]
+      }
+    ],
+    "transitionCues": [
+      "Quand les points clés sont couverts et le prospect a des questions/objections",
+      "\\",
+      "",
+      "Si le prospect dit \\",
+      " → engager directement"
+    ],
+    "antiPatterns": [
+      "Feature dump : tout montrer sans lien avec le besoin",
+      "Monologue de 15 minutes sans interaction",
+      "Utiliser du jargon technique que le prospect ne comprend pas",
+      "Ne pas vérifier la compréhension / l'intérêt en cours de route"
+    ],
+    "situationalTips": [
+      {
+        "advice": "⚠️ Vous présentez depuis longtemps sans interaction. Faites une pause.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "speakingTooMuch",
+        "triggerValue": ""
+      },
+      {
+        "advice": "🔴 Le prospect décroche ! Arrêtez de présenter. Posez une question.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "emotionDetected",
+        "triggerValue": "disengaged"
+      },
+      {
+        "advice": "🟢 Enthousiasme ! Ancrez le positif.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "emotionDetected",
+        "triggerValue": "enthusiastic"
+      }
+    ]
+  },
+  {
+    "movement": "dialogue",
+    "intent": "Les objections ne sont pas des obstacles — ce sont des signaux d'intérêt. Un prospect qui pose des questions envisage d'acheter. On écoute, on reformule, on répond avec empathie et preuves. JAMAIS de confrontation.\",\n            prospectExperience: \"Mes inquiétudes sont prises au sérieux. On ne me force pas — on m'aide à décider.\",\n            goldenRule: \"Accueillez chaque objection comme un cadeau. C'est la porte d'entrée vers la confiance.\",\n            openers: [\n                ConversationStarter(\n                    phrase: \"Qu'est-ce qui vous vient à l'esprit ? Quelles questions vous restent ?\",\n                    context: \"Invitation ouverte après la présentation\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"Je comprends votre hésitation. Beaucoup de nos clients avaient la même au départ. Ce qui les a convaincus, c'est...\",\n                    context: \"Objection exprimée — Feel-Felt-Found\",\n                    energy: .empathetic\n                ),\n                ConversationStarter(\n                    phrase: \"C'est une bonne question. Dites-m'en plus pour que je puisse bien y répondre.\",\n                    context: \"Quand on a besoin de plus de contexte sur l'objection\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"Si on résout ce point-là, on est bons ?\",\n                    context: \"Isoler l'objection — technique avancée\",\n                    energy: .direct\n                )\n            ],\n            memorySlots: [\n                MemorySlot(key: \"objections_raised\", label: \"Objections exprimées\", importance: .critical, detectionHints: [\"trop cher\", \"cher\", \"prix\", \"budget\", \"coût\", \"réfléchir\", \"pas sûr\", \"hésiter\", \"concurrent\", \"compliqué\", \"risque\", \"garantie\", \"pas le moment\", \"plus tard\"]),\n                MemorySlot(key: \"objections_resolved\", label: \"Objections résolues\", importance: .important, detectionHints: [\"ok\", \"je comprends\", \"ça me rassure\", \"d'accord\", \"c'est clair\"]),\n                MemorySlot(key: \"remaining_concerns\", label: \"Points non résolus\", importance: .critical, detectionHints: [\"quand même\", \"mais\", \"encore\", \"pas totalement\"])\n            ],\n            transitionCues: [\n                \"Quand les principales objections sont traitées\",\n                \"\"On a fait le tour des questions ? Si oui, voilà ce que je vous propose pour la suite.\"\",\n                \"Quand le prospect commence à poser des questions pratiques (signe d'achat)\"\n            ],\n            antiPatterns: [\n                \"Contrer l'objection immédiatement sans écouter complètement\",\n                \"Se justifier ou devenir défensif\",\n                \"Dire \"je comprends\" sans vraiment comprendre\",\n                \"Ignorer l'émotion derrière l'objection\"\n            ],\n            situationalTips: [\n                SituationalTip(trigger: .keywordDetected(\"cher\"), advice: \"💰 Objection prix. Ne défendez PAS le prix. Recontextualisez la valeur.\", alternatives: [\"\"Je comprends. Par rapport à quoi vous comparez ?\"\", \"\"Si le prix n'était pas un sujet, ce serait la bonne solution ?\"\", \"\"Rappelez-vous, [douleur] vous coûte [montant calculé ensemble]. Notre solution c'est [X€].\"\"]),\n                SituationalTip(trigger: .keywordDetected(\"réfléchir\"), advice: \"⏸️ \"Réfléchir\" = objection cachée. Faites-la sortir.\", alternatives: [\"\"Bien sûr. Qu'est-ce qui pèse le plus dans votre réflexion ?\"\", \"\"Si vous deviez donner un point qui bloque, ce serait lequel ?\"\", \"\"C'est normal. Sur une échelle de 1 à 10, vous en êtes où ? Que manque-t-il pour aller à 10 ?\"\"]),\n                SituationalTip(trigger: .keywordDetected(\"concurrent\"), advice: \"🏁 Mention concurrent. Ne critiquez JAMAIS. Recadrez sur vos forces.\", alternatives: [\"\"Qu'est-ce qui vous a plu chez eux ? Et moins plu ?\"\", \"\"Quels sont vos critères les plus importants pour choisir ?\"\", \"\"Ce qui nous distingue c'est [différenciateur] — et c'est lié à votre besoin de [besoin].\"\"]),\n                SituationalTip(trigger: .emotionDetected(.frustrated), advice: \"😤 Frustration pendant le dialogue. STOP arguments. Empathie d'abord.\", alternatives: [\"\"Je sens que ce point est important pour vous. Prenons le temps.\"\", \"\"Votre préoccupation est tout à fait légitime.\"",
+    "prospectExperience": "Mes inquiétudes sont prises au sérieux. On ne me force pas — on m'aide à décider.",
+    "goldenRule": "Accueillez chaque objection comme un cadeau. C'est la porte d'entrée vers la confiance.",
+    "openers": [
+      {
+        "phrase": "Qu'est-ce qui vous vient à l'esprit ? Quelles questions vous restent ?",
+        "context": "Invitation ouverte après la présentation",
+        "energy": "curious"
+      },
+      {
+        "phrase": "Je comprends votre hésitation. Beaucoup de nos clients avaient la même au départ. Ce qui les a convaincus, c'est...",
+        "context": "Objection exprimée — Feel-Felt-Found",
+        "energy": "empathetic"
+      },
+      {
+        "phrase": "C'est une bonne question. Dites-m'en plus pour que je puisse bien y répondre.",
+        "context": "Quand on a besoin de plus de contexte sur l'objection",
+        "energy": "curious"
+      },
+      {
+        "phrase": "Si on résout ce point-là, on est bons ?",
+        "context": "Isoler l'objection — technique avancée",
+        "energy": "direct"
+      }
+    ],
+    "memorySlots": [
+      {
+        "key": "objections_raised",
+        "label": "Objections exprimées",
+        "importance": "critical",
+        "detectionHints": [
+          "trop cher",
+          "cher",
+          "prix",
+          "budget",
+          "coût",
+          "réfléchir",
+          "pas sûr",
+          "hésiter",
+          "concurrent",
+          "compliqué",
+          "risque",
+          "garantie",
+          "pas le moment",
+          "plus tard"
+        ]
+      },
+      {
+        "key": "objections_resolved",
+        "label": "Objections résolues",
+        "importance": "important",
+        "detectionHints": [
+          "ok",
+          "je comprends",
+          "ça me rassure",
+          "d'accord",
+          "c'est clair"
+        ]
+      },
+      {
+        "key": "remaining_concerns",
+        "label": "Points non résolus",
+        "importance": "critical",
+        "detectionHints": [
+          "quand même",
+          "mais",
+          "encore",
+          "pas totalement"
+        ]
+      }
+    ],
+    "transitionCues": [
+      "Quand les principales objections sont traitées",
+      "\\",
+      "",
+      "Quand le prospect commence à poser des questions pratiques (signe d'achat)"
+    ],
+    "antiPatterns": [
+      "Contrer l'objection immédiatement sans écouter complètement",
+      "Se justifier ou devenir défensif",
+      "Dire \\",
+      " sans vraiment comprendre",
+      "Ignorer l'émotion derrière l'objection"
+    ],
+    "situationalTips": [
+      {
+        "advice": "💰 Objection prix. Ne défendez PAS le prix. Recontextualisez la valeur.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "keywordDetected",
+        "triggerValue": "cher"
+      },
+      {
+        "advice": "⏸️ \\\"Réfléchir\\\" = objection cachée. Faites-la sortir.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "keywordDetected",
+        "triggerValue": "réfléchir"
+      },
+      {
+        "advice": "🏁 Mention concurrent. Ne critiquez JAMAIS. Recadrez sur vos forces.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "keywordDetected",
+        "triggerValue": "concurrent"
+      },
+      {
+        "advice": "😤 Frustration pendant le dialogue. STOP arguments. Empathie d'abord.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "emotionDetected",
+        "triggerValue": "frustrated"
+      }
+    ]
+  },
+  {
+    "movement": "engagement",
+    "intent": "Obtenir un engagement CONCRET vers l'étape suivante. Pas forcément une signature — parfois c'est un 2ème RDV avec le décideur, une démo technique, un essai. L'important : une action avec une date.\",\n            prospectExperience: \"La suite est claire. Je sais exactement ce qu'on va faire et quand.\",\n            goldenRule: \"Après la question d'engagement, TAISEZ-VOUS. Le premier qui parle a perdu.\",\n            openers: [\n                ConversationStarter(\n                    phrase: \"On a vu que [résumé valeur]. Comment on avance ensemble ?\",\n                    context: \"Closing assumptif — le plus naturel\",\n                    energy: .direct\n                ),\n                ConversationStarter(\n                    phrase: \"Quelle serait la meilleure prochaine étape pour vous ?\",\n                    context: \"Donner le contrôle au prospect\",\n                    energy: .curious\n                ),\n                ConversationStarter(\n                    phrase: \"Je vous prépare une proposition formelle et on en reparle jeudi. Ça vous va ?\",\n                    context: \"Quand le terrain est préparé — proposition concrète + date\",\n                    energy: .direct\n                ),\n                ConversationStarter(\n                    phrase: \"Si je résous [dernier point de friction], on peut avancer ?\",\n                    context: \"Après traitement d'objections — conditionnel\",\n                    energy: .direct\n                )\n            ],\n            memorySlots: [\n                MemorySlot(key: \"commitment_type\", label: \"Type d'engagement\", importance: .critical, detectionHints: [\"rdv\", \"démo\", \"proposition\", \"contrat\", \"essai\", \"pilote\", \"POC\", \"devis\"]),\n                MemorySlot(key: \"next_step_date\", label: \"Date prochaine étape\", importance: .critical, detectionHints: [\"lundi\", \"mardi\", \"semaine prochaine\", \"demain\", \"vendredi\", \"date\"]),\n                MemorySlot(key: \"action_items_me\", label: \"Mes actions\", importance: .important, detectionHints: [\"je vous envoie\", \"je prépare\", \"je fais\"]),\n                MemorySlot(key: \"action_items_prospect\", label: \"Actions prospect\", importance: .important, detectionHints: [\"je vais en parler\", \"je vérifie\", \"je vous reviens\", \"je valide\"])\n            ],\n            transitionCues: [\n                \"Engagement obtenu → passer au suivi\",\n                \"Si pas d'engagement → revenir au dialogue ou qualifier ce qui manque\"\n            ],\n            antiPatterns: [\n                \"Continuer à parler après avoir posé la question d'engagement\",\n                \"Proposer une prochaine étape floue (\"on se rappelle\")\",\n                \"Ne pas confirmer qui fait quoi\",\n                \"Avoir peur du silence\"\n            ],\n            situationalTips: [\n                SituationalTip(trigger: .emotionDetected(.confident), advice: \"🟢 Signal d'achat fort. C'est maintenant. Proposez l'action.\", alternatives: []),\n                SituationalTip(trigger: .emotionDetected(.hesitant), advice: \"Hésitation au moment de s'engager. Un élément manque. Demandez lequel.\", alternatives: [\"\"Qu'est-ce qu'il vous faudrait pour dire oui en toute confiance ?\"\", \"\"Quel point reste en suspens pour vous ?\"\"]),\n                SituationalTip(trigger: .silenceTooLong, advice: \"Silence après votre question d'engagement. C'est BIEN. Ne parlez PAS. Ils réfléchissent.",
+    "prospectExperience": "La suite est claire. Je sais exactement ce qu'on va faire et quand.",
+    "goldenRule": "Après la question d'engagement, TAISEZ-VOUS. Le premier qui parle a perdu.",
+    "openers": [
+      {
+        "phrase": "On a vu que [résumé valeur]. Comment on avance ensemble ?",
+        "context": "Closing assumptif — le plus naturel",
+        "energy": "direct"
+      },
+      {
+        "phrase": "Quelle serait la meilleure prochaine étape pour vous ?",
+        "context": "Donner le contrôle au prospect",
+        "energy": "curious"
+      },
+      {
+        "phrase": "Je vous prépare une proposition formelle et on en reparle jeudi. Ça vous va ?",
+        "context": "Quand le terrain est préparé — proposition concrète + date",
+        "energy": "direct"
+      },
+      {
+        "phrase": "Si je résous [dernier point de friction], on peut avancer ?",
+        "context": "Après traitement d'objections — conditionnel",
+        "energy": "direct"
+      }
+    ],
+    "memorySlots": [
+      {
+        "key": "commitment_type",
+        "label": "Type d'engagement",
+        "importance": "critical",
+        "detectionHints": [
+          "rdv",
+          "démo",
+          "proposition",
+          "contrat",
+          "essai",
+          "pilote",
+          "POC",
+          "devis"
+        ]
+      },
+      {
+        "key": "next_step_date",
+        "label": "Date prochaine étape",
+        "importance": "critical",
+        "detectionHints": [
+          "lundi",
+          "mardi",
+          "semaine prochaine",
+          "demain",
+          "vendredi",
+          "date"
+        ]
+      },
+      {
+        "key": "action_items_me",
+        "label": "Mes actions",
+        "importance": "important",
+        "detectionHints": [
+          "je vous envoie",
+          "je prépare",
+          "je fais"
+        ]
+      },
+      {
+        "key": "action_items_prospect",
+        "label": "Actions prospect",
+        "importance": "important",
+        "detectionHints": [
+          "je vais en parler",
+          "je vérifie",
+          "je vous reviens",
+          "je valide"
+        ]
+      }
+    ],
+    "transitionCues": [
+      "Engagement obtenu → passer au suivi",
+      "Si pas d'engagement → revenir au dialogue ou qualifier ce qui manque"
+    ],
+    "antiPatterns": [
+      "Continuer à parler après avoir posé la question d'engagement",
+      "Proposer une prochaine étape floue (\\",
+      ")",
+      "Ne pas confirmer qui fait quoi",
+      "Avoir peur du silence"
+    ],
+    "situationalTips": [
+      {
+        "advice": "🟢 Signal d'achat fort. C'est maintenant. Proposez l'action.",
+        "alternatives": [],
+        "triggerType": "emotionDetected",
+        "triggerValue": "confident"
+      },
+      {
+        "advice": "Hésitation au moment de s'engager. Un élément manque. Demandez lequel.",
+        "alternatives": [
+          "\\",
+          "",
+          "\\",
+          ""
+        ],
+        "triggerType": "emotionDetected",
+        "triggerValue": "hesitant"
+      },
+      {
+        "advice": "Silence après votre question d'engagement. C'est BIEN. Ne parlez PAS. Ils réfléchissent.",
+        "alternatives": [],
+        "triggerType": "silenceTooLong",
+        "triggerValue": ""
+      }
+    ]
+  },
+  {
+    "movement": "suivi",
+    "intent": "Verrouiller le deal. Résumer, attribuer les actions, caler la date. Un deal sans suivi est un deal mort. Le CR part dans l'heure, pas demain.\",\n            prospectExperience: \"Cette personne est fiable et organisée. Le suivi est clair.\",\n            goldenRule: \"Le CR dans l'heure. Le relance le lendemain. Le deal se gagne après le call.\",\n            openers: [\n                ConversationStarter(\n                    phrase: \"Super, on a un plan. Je résume : [actions]. Je vous envoie tout par écrit dans l'heure.\",\n                    context: \"Standard — récap immédiat\",\n                    energy: .direct\n                ),\n                ConversationStarter(\n                    phrase: \"Merci pour cet échange, c'était vraiment enrichissant. On se retrouve [date] pour [action]. D'ici là, je vous envoie [livrable].\",\n                    context: \"Fin chaleureuse avec engagement confirmé\",\n                    energy: .warm\n                )\n            ],\n            memorySlots: [\n                MemorySlot(key: \"recap_confirmed\", label: \"Récap confirmé\", importance: .critical, detectionHints: [\"c'est ça\", \"ok\", \"exactement\", \"parfait\"]),\n                MemorySlot(key: \"next_meeting_date\", label: \"Date du prochain RDV\", importance: .critical, detectionHints: [\"lundi\", \"mardi\", \"semaine prochaine\", \"date\"])\n            ],\n            transitionCues: [\n                \"Call terminé — passer au post-call workflow\"\n            ],\n            antiPatterns: [\n                \"Finir sans résumer\",\n                \"Laisser le prospect raccrocher sans engagement écrit\",\n                \"Envoyer le CR le lendemain (ou pire, jamais)\"\n            ],\n            situationalTips: [\n                SituationalTip(trigger: .tooShortInMovement, advice: \"Ne raccrochez pas sans récapituler les actions. C'est crucial.",
+    "prospectExperience": "Cette personne est fiable et organisée. Le suivi est clair.",
+    "goldenRule": "Le CR dans l'heure. Le relance le lendemain. Le deal se gagne après le call.",
+    "openers": [
+      {
+        "phrase": "Super, on a un plan. Je résume : [actions]. Je vous envoie tout par écrit dans l'heure.",
+        "context": "Standard — récap immédiat",
+        "energy": "direct"
+      },
+      {
+        "phrase": "Merci pour cet échange, c'était vraiment enrichissant. On se retrouve [date] pour [action]. D'ici là, je vous envoie [livrable].",
+        "context": "Fin chaleureuse avec engagement confirmé",
+        "energy": "warm"
+      }
+    ],
+    "memorySlots": [
+      {
+        "key": "recap_confirmed",
+        "label": "Récap confirmé",
+        "importance": "critical",
+        "detectionHints": [
+          "c'est ça",
+          "ok",
+          "exactement",
+          "parfait"
+        ]
+      },
+      {
+        "key": "next_meeting_date",
+        "label": "Date du prochain RDV",
+        "importance": "critical",
+        "detectionHints": [
+          "lundi",
+          "mardi",
+          "semaine prochaine",
+          "date"
+        ]
+      }
+    ],
+    "transitionCues": [
+      "Call terminé — passer au post-call workflow"
+    ],
+    "antiPatterns": [
+      "Finir sans résumer",
+      "Laisser le prospect raccrocher sans engagement écrit",
+      "Envoyer le CR le lendemain (ou pire, jamais)"
+    ],
+    "situationalTips": [
+      {
+        "advice": "Ne raccrochez pas sans récapituler les actions. C'est crucial.",
+        "alternatives": [],
+        "triggerType": "tooShortInMovement",
+        "triggerValue": ""
+      }
+    ]
+  }
+]
