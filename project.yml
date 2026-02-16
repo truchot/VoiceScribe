@@ -1,0 +1,75 @@
+name: VoiceScribe
+options:
+  bundleIdPrefix: com.voicescribe
+  deploymentTarget:
+    macOS: "26.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: false
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    SWIFT_OBJC_BRIDGING_HEADER: VoiceScribe/Bridge/VoiceScribe-Bridging-Header.h
+    HEADER_SEARCH_PATHS:
+      - $(PROJECT_DIR)/libs/whisper.cpp/include
+      - $(PROJECT_DIR)/libs/whisper.cpp/ggml/include
+    LIBRARY_SEARCH_PATHS:
+      - $(PROJECT_DIR)/libs/whisper.cpp/build/src
+      - $(PROJECT_DIR)/libs/whisper.cpp/build/ggml/src
+      - $(PROJECT_DIR)/libs/whisper.cpp/build/ggml/src/ggml-metal
+      - $(PROJECT_DIR)/libs/whisper.cpp/build/ggml/src/ggml-blas
+    OTHER_LDFLAGS:
+      - -lwhisper
+      - -lggml
+      - -lggml-base
+      - -lggml-cpu
+      - -lggml-metal
+      - -lggml-blas
+      - -lc++
+    LD_RUNPATH_SEARCH_PATHS:
+      - "@executable_path/../Frameworks"
+      - "$(PROJECT_DIR)/libs/whisper.cpp/build/src"
+      - "$(PROJECT_DIR)/libs/whisper.cpp/build/ggml/src"
+      - "$(PROJECT_DIR)/libs/whisper.cpp/build/ggml/src/ggml-metal"
+      - "$(PROJECT_DIR)/libs/whisper.cpp/build/ggml/src/ggml-blas"
+
+targets:
+  VoiceScribe:
+    type: application
+    platform: macOS
+    sources:
+      - path: VoiceScribe/VoiceScribeApp.swift
+      - path: VoiceScribe/Domain
+      - path: VoiceScribe/Infrastructure
+      - path: VoiceScribe/Application
+      - path: VoiceScribe/Presentation
+      - path: VoiceScribe/Bridge
+        buildPhase: none
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.voicescribe.app
+        INFOPLIST_FILE: VoiceScribe/Info.plist
+        CODE_SIGN_ENTITLEMENTS: VoiceScribe/VoiceScribe.entitlements
+        ENABLE_HARDENED_RUNTIME: false
+        CODE_SIGN_IDENTITY: "-"
+        PRODUCT_NAME: VoiceScribe
+    entitlements:
+      path: VoiceScribe/VoiceScribe.entitlements
+    dependencies: []
+    preBuildScripts: []
+    postBuildScripts:
+      - name: "Copy whisper.cpp dylibs to Frameworks"
+        script: |
+          FRAMEWORKS_DIR="${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}"
+          mkdir -p "$FRAMEWORKS_DIR"
+          WHISPER_DIR="${PROJECT_DIR}/libs/whisper.cpp/build"
+          cp -f "$WHISPER_DIR/src/libwhisper"*.dylib "$FRAMEWORKS_DIR/" 2>/dev/null || true
+          cp -f "$WHISPER_DIR/ggml/src/libggml."*.dylib "$FRAMEWORKS_DIR/" 2>/dev/null || true
+          cp -f "$WHISPER_DIR/ggml/src/libggml-base"*.dylib "$FRAMEWORKS_DIR/" 2>/dev/null || true
+          cp -f "$WHISPER_DIR/ggml/src/libggml-cpu"*.dylib "$FRAMEWORKS_DIR/" 2>/dev/null || true
+          cp -f "$WHISPER_DIR/ggml/src/ggml-metal/libggml-metal"*.dylib "$FRAMEWORKS_DIR/" 2>/dev/null || true
+          cp -f "$WHISPER_DIR/ggml/src/ggml-blas/libggml-blas"*.dylib "$FRAMEWORKS_DIR/" 2>/dev/null || true
+    scheme:
+      environmentVariables:
+        DYLD_LIBRARY_PATH: $(PROJECT_DIR)/libs/whisper.cpp/build/src:$(PROJECT_DIR)/libs/whisper.cpp/build/ggml/src
