@@ -16,6 +16,9 @@ libs/
 # macOS
 .DS_Store
 
+# Claude worktrees
+.claude-worktrees/
+
 # Audit reports
 AUDIT.md
 AUDIT_V2.md
