@@ -1,0 +1,21 @@
+# Xcode
+*.xcodeproj/
+xcuserdata/
+DerivedData/
+*.xcworkspace/
+
+# Build
+build/
+
+# whisper.cpp (cloned & built by setup.sh)
+libs/
+
+# Whisper models (downloaded by setup.sh, ~1.5GB)
+/Models/
+
+# macOS
+.DS_Store
+
+# Audit reports
+AUDIT.md
+AUDIT_V2.md
