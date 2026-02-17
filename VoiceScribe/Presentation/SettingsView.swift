@@ -7,12 +7,16 @@ struct SettingsView: View {
     @EnvironmentObject var coaching: CoachingStore
     @EnvironmentObject var sentiment: SentimentStore
     @EnvironmentObject var overlay: OverlayManager
-    
+    @EnvironmentObject var transcription: TranscriptionStore
+
     @AppStorage("whisperLanguage") private var language = "auto"
     @AppStorage("modelSize") private var modelSize = "distil-large-v3"
+    @AppStorage("sttBackend") private var sttBackend = STTBackend.whisperLocal.rawValue
     @AppStorage("globalHotkeysEnabled") private var globalHotkeysEnabled = true
     @AppStorage("vadSensitivity") private var vadSensitivity = 0.5
     @AppStorage("sentimentSmoothingFactor") private var sentimentSmoothing = 0.7
+    @AppStorage("sttServerHost") private var sttServerHost = "localhost"
+    @AppStorage("sttServerPort") private var sttServerPort = 8765
     
     var body: some View {
         TabView {
@@ -84,6 +88,8 @@ struct SettingsView: View {
             }
             Section("Latence") {
                 latencyRow("Sentiment prosodique", "~50ms", .green)
+                latencyRow("Analyse sémantique", "~5ms", .green)
+                latencyRow("Diarisation", "~10ms", .green)
                 latencyRow("Coaching suggestion", "~100ms", .green)
                 latencyRow("Transcription Whisper", "~1-2s", .orange)
                 latencyRow("Extraction mémoire", "~200ms", .green)
@@ -162,11 +168,73 @@ struct SettingsView: View {
     }
     
     // MARK: - Audio
-    
+
     var audioTab: some View {
         Form {
+            Section("Moteur STT") {
+                Picker("Backend", selection: $sttBackend) {
+                    ForEach(STTBackend.allCases, id: \.rawValue) { backend in
+                        Text(backend.displayName).tag(backend.rawValue)
+                    }
+                }
+                if STTBackend(rawValue: sttBackend)?.requiresServer == true {
+                    HStack {
+                        Text("Serveur:")
+                        TextField("Host", text: $sttServerHost).frame(width: 120)
+                        Text(":")
+                        TextField("Port", value: $sttServerPort, format: .number).frame(width: 60)
+                    }
+                    HStack {
+                        Text("État:")
+                        Text(transcription.sttConnectionState.displayText)
+                            .foregroundStyle(transcription.sttConnectionState.isConnected ? .green : .secondary)
+                        Spacer()
+                        if transcription.sttConnectionState.isConnected {
+                            Button("Déconnecter") { env.disconnectStreamingSTT() }
+                        } else {
+                            Button("Connecter") {
+                                Task {
+                                    try? await env.connectStreamingSTT(
+                                        config: STTServerConfig(host: sttServerHost, port: sttServerPort)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Text("Le serveur Voxtral ou Whisper doit tourner localement. Voir le script server/start.sh.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
             Section("VAD") {
                 HStack { Text("Sensibilité:"); Slider(value: $vadSensitivity, in: 0.2...0.8, step: 0.05); Text("\(vadSensitivity, specifier: "%.2f")").monospaced().frame(width: 40) }
+            }
+            Section("Diarisation (multi-locuteurs)") {
+                HStack {
+                    Text("Locuteurs détectés:")
+                    Spacer()
+                    Text("\(transcription.activeSpeakers.count)").monospaced()
+                }
+                if !transcription.activeSpeakers.isEmpty {
+                    ForEach(transcription.activeSpeakers) { speaker in
+                        HStack {
+                            Text(speaker.label).font(.caption)
+                            Spacer()
+                            Text("\(speaker.segmentCount) seg.").font(.caption).foregroundStyle(.secondary)
+                            Text(formatDuration(speaker.totalSpeakingTime)).font(.caption).monospaced()
+                        }
+                    }
+                }
+                let balance = transcription.speakerBalance
+                if balance.totalTime > 0 {
+                    HStack {
+                        Text("Équilibre:")
+                        Spacer()
+                        Text(balance.isBalanced ? "Équilibré" : "Déséquilibré")
+                            .foregroundStyle(balance.isBalanced ? .green : .orange)
+                    }
+                }
+                Text("La diarisation identifie automatiquement les différents participants par leur empreinte vocale.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section("Audio système") {
                 HStack {
@@ -180,6 +248,11 @@ struct SettingsView: View {
                 Toggle("Capturer l'audio", isOn: $audio.captureSystemAudio)
             }
         }.formStyle(.grouped)
+    }
+
+    private func formatDuration(_ t: TimeInterval) -> String {
+        let m = Int(t) / 60, s = Int(t) % 60
+        return String(format: "%d:%02d", m, s)
     }
     
     // MARK: - Hotkeys
@@ -213,16 +286,19 @@ struct SettingsView: View {
             Text("Coaching conversationnel en temps réel").foregroundStyle(.secondary)
             HStack(spacing: 6) {
                 FeaturePill(text: "11 mouvements", color: .blue)
-                FeaturePill(text: "Mémoire live", color: .green)
-                FeaturePill(text: "Sentiment", color: .red)
-                FeaturePill(text: "Overlay compact", color: .cyan)
+                FeaturePill(text: "Multi-STT", color: .purple)
+                FeaturePill(text: "Diarisation", color: .green)
+                FeaturePill(text: "Sémantique", color: .red)
+                FeaturePill(text: "Overlay", color: .cyan)
                 FeaturePill(text: "100% local", color: .orange)
             }
             Divider().frame(width: 300)
             VStack(alignment: .leading, spacing: 6) {
                 Label("3 actes, 11 mouvements de conversation", systemImage: "brain")
+                Label("Multi-backend STT: Whisper local + Voxtral serveur", systemImage: "network")
+                Label("Diarisation multi-locuteurs (empreinte vocale)", systemImage: "person.2")
+                Label("Sentiment 3 canaux: prosodie + patterns + sémantique", systemImage: "waveform")
                 Label("Mémoire conversationnelle cross-mouvement", systemImage: "memorychip")
-                Label("Détection d'émotions prosodique ~50ms", systemImage: "waveform")
                 Label("Overlay compact toujours visible (⌥⇧O)", systemImage: "pip.enter")
                 Label("Rapport post-call avec scores", systemImage: "doc.text")
                 Label("Aucune donnée envoyée", systemImage: "lock.shield")

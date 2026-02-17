@@ -57,6 +57,9 @@ final class AppEnvironment: ObservableObject {
             sentimentProvider: SentimentAnalyzer(),
             coachEngine: ConversationCoach(),
             hybridSentiment: HybridSentiment(),
+            diarizer: SpeakerDiarizer(),
+            streamingSTT: WebSocketSTTClient(),
+            semanticSentiment: SemanticSentimentAnalyzer(),
             makeVAD: { threshold in SileroVAD(config: .init(speechThreshold: threshold)) },
             makeSentiment: { smoothing in SentimentAnalyzer(config: .init(smoothingFactor: smoothing)) },
             makeTranscriber: { path, lang in WhisperTranscriber(config: .init(modelPath: path, language: lang)) }
@@ -138,5 +141,15 @@ final class AppEnvironment: ObservableObject {
     
     func toggleOverlay() {
         overlay.toggle()
+    }
+
+    func connectStreamingSTT(config: STTServerConfig = .default) async throws {
+        try await coordinator.connectStreamingSTT(config: config)
+        transcription.sttConnectionState = .connected
+    }
+
+    func disconnectStreamingSTT() {
+        coordinator.disconnectStreamingSTT()
+        transcription.sttConnectionState = .disconnected
     }
 }

@@ -77,9 +77,14 @@ final class HybridSentiment {
         }
     }
     
-    /// Merge prosodic emotion with accumulated text signals.
+    /// Merge prosodic emotion with accumulated text signals and optional semantic analysis.
     /// Call each time SentimentStore would update (e.g. every 500ms).
     func merge(prosody: EmotionalState, at timestamp: TimeInterval) -> HybridResult {
+        merge(prosody: prosody, semantic: nil, at: timestamp)
+    }
+
+    /// 3-channel merge: prosody + text patterns + semantic analysis.
+    func merge(prosody: EmotionalState, semantic: SemanticAnalysis?, at timestamp: TimeInterval) -> HybridResult {
         let textAgg = aggregateTextSignals(at: timestamp)
         
         // If no significant text, return prosody with metadata
@@ -150,7 +155,12 @@ final class HybridSentiment {
         }
         
         merged.confidence = max(prosody.confidence, textAgg.confidence)
-        
+
+        // ── Semantic enrichment (3rd channel) ──
+        if let semantic, semantic.confidence > 0.3 {
+            merged = enrichWithSemantic(merged, semantic: semantic)
+        }
+
         return HybridResult(
             emotion: merged,
             textSignals: textAgg.signals,
@@ -158,6 +168,44 @@ final class HybridSentiment {
             commercialAlert: textAgg.maxStrength > 0.5 ?
                 buildAlert(signals: textAgg.signals, valence: textAgg.commercialValence) : nil
         )
+    }
+
+    /// Enrich a merged emotion with semantic text analysis.
+    /// Semantic adjusts certainty→dominance and engagement→arousal.
+    private func enrichWithSemantic(_ emotion: EmotionalState, semantic: SemanticAnalysis) -> EmotionalState {
+        var enriched = emotion
+        let sw: Float = 0.25 // Semantic weight (light touch — supplements rather than overrides)
+        let pw: Float = 1.0 - sw
+
+        // Semantic polarity contributes to valence
+        enriched.valence = enriched.valence * pw + semantic.sentiment.polarity * sw
+        enriched.valence = max(-1, min(1, enriched.valence))
+
+        // Certainty maps to dominance
+        let certDelta = (semantic.sentiment.certainty - 0.5) * 2.0 // -1..1 range
+        enriched.dominance = enriched.dominance * pw + certDelta * 0.3 * sw
+        enriched.dominance = max(-1, min(1, enriched.dominance))
+
+        // Engagement maps to arousal
+        let engDelta = (semantic.sentiment.engagement - 0.5) * 2.0
+        enriched.arousal = enriched.arousal * pw + engDelta * 0.2 * sw
+        enriched.arousal = max(-1, min(1, enriched.arousal))
+
+        // Intent-based adjustments
+        switch semantic.intent {
+        case .objecting:
+            enriched.valence = min(enriched.valence, enriched.valence - 0.1)
+        case .committing:
+            enriched.valence = max(enriched.valence, enriched.valence + 0.1)
+            enriched.dominance = max(enriched.dominance, 0.2)
+        case .deflecting:
+            enriched.dominance = min(enriched.dominance, enriched.dominance - 0.1)
+        default: break
+        }
+
+        enriched.confidence = min(1.0, enriched.confidence + semantic.confidence * 0.1)
+
+        return enriched
     }
     
     /// Reset state (new session).

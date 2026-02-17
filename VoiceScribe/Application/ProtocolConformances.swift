@@ -28,3 +28,15 @@ extension SessionPersistence: PersistenceProvider {}
 
 // MARK: - HybridSentiment → HybridSentimentProvider
 extension HybridSentiment: HybridSentimentProvider {}
+
+// MARK: - SpeakerDiarizer → DiarizationProvider
+// All method signatures match exactly.
+extension SpeakerDiarizer: DiarizationProvider {}
+
+// MARK: - WebSocketSTTClient → StreamingTranscriberProvider
+// All method signatures match exactly.
+extension WebSocketSTTClient: StreamingTranscriberProvider {}
+
+// MARK: - SemanticSentimentAnalyzer → SemanticSentimentProvider
+// All method signatures match exactly.
+extension SemanticSentimentAnalyzer: SemanticSentimentProvider {}

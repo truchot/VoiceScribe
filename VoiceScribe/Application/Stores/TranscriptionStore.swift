@@ -103,6 +103,26 @@ final class TranscriptionStore: ObservableObject {
         case .other: isInferringSystem = active
         }
     }
+
+    // MARK: - Speaker Diarization Info
+
+    @Published var activeSpeakers: [SpeakerProfile] = []
+    @Published var speakerBalance: SpeakerBalance = .empty
+
+    /// Update speaker information from the diarization pipeline.
+    func updateSpeakerInfo(activeSpeakers: [SpeakerProfile], balance: SpeakerBalance) {
+        self.activeSpeakers = activeSpeakers
+        self.speakerBalance = balance
+    }
+
+    // MARK: - STT Backend State
+
+    @Published var sttConnectionState: STTConnectionState = .disconnected
+    @AppStorage("sttBackend") var sttBackend: String = STTBackend.whisperLocal.rawValue
+
+    var activeSTTBackend: STTBackend {
+        STTBackend(rawValue: sttBackend) ?? .whisperLocal
+    }
     
     // MARK: - Persistence
     

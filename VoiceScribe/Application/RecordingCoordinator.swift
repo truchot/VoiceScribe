@@ -43,8 +43,14 @@ final class RecordingCoordinator {
     /// Creates a fresh transcriber pair with the given config.
     let makeTranscriber: (_ modelPath: String, _ language: String) -> TranscriberProvider
     
+    // MARK: - Phase 2 Components (protocol-based)
+
+    private var diarizer: DiarizationProvider
+    private var streamingSTT: StreamingTranscriberProvider?
+    private var semanticSentiment: SemanticSentimentProvider
+
     // MARK: - Infrastructure
-    
+
     let hotkeys = GlobalHotkeyManager()
     private var hybridSentiment: HybridSentimentProvider
     private let coachingPersistence = CoachingPersistenceUseCase()
@@ -75,6 +81,9 @@ final class RecordingCoordinator {
         sentimentProvider: SentimentProvider,
         coachEngine: CoachingProvider,
         hybridSentiment: HybridSentimentProvider,
+        diarizer: DiarizationProvider = SpeakerDiarizer(),
+        streamingSTT: StreamingTranscriberProvider? = nil,
+        semanticSentiment: SemanticSentimentProvider = SemanticSentimentAnalyzer(),
         makeVAD: @escaping (_ speechThreshold: Float) -> VADProvider,
         makeSentiment: @escaping (_ smoothingFactor: Float) -> SentimentProvider,
         makeTranscriber: @escaping (_ modelPath: String, _ language: String) -> TranscriberProvider
@@ -84,7 +93,7 @@ final class RecordingCoordinator {
         self.transcription = transcription
         self.sentiment = sentiment
         self.coaching = coaching
-        
+
         // All components injected — no defaults here (composition root is AppEnvironment)
         self.micVAD = micVAD
         self.systemVAD = systemVAD
@@ -93,20 +102,28 @@ final class RecordingCoordinator {
         self.sentimentProvider = sentimentProvider
         self.coachEngine = coachEngine
         self.hybridSentiment = hybridSentiment
+
+        // Phase 2: diarization, streaming STT, semantic sentiment
+        self.diarizer = diarizer
+        self.streamingSTT = streamingSTT
+        self.semanticSentiment = semanticSentiment
+
         self.makeVAD = makeVAD
         self.makeSentiment = makeSentiment
         self.makeTranscriber = makeTranscriber
-        
+
         // Wire domain event bus: coach engine → persistence subscriber
         self.coachEngine.eventBus = eventBus
         coachingPersistence.subscribe(to: eventBus)
-        
+
         // Wire coaching store to engine
         coaching.configure(coach: self.coachEngine)
-        
+
         setupHotkeys()
         setupCoachingCallbacks()
         setupSentimentCallbacks()
+        setupDiarizationCallbacks()
+        setupStreamingSTTCallbacks()
     }
     
     /// Maximum audio reconnection attempts before giving up.
@@ -213,6 +230,8 @@ final class RecordingCoordinator {
         coaching.reset()
         coachEngine.reset()
         hybridSentiment.reset()
+        diarizer.reset()
+        semanticSentiment.reset()
         
         // Start persistence tracking for this session
         if let sessionId = transcription.currentSession?.id {
@@ -265,6 +284,7 @@ final class RecordingCoordinator {
             audio.systemAudio.onAudioChunk = { [weak self] samples, time in
                 guard let self else { return }
                 self.systemVAD.process(samples: samples, timestamp: time)
+                self.diarizer.process(samples: samples, timestamp: time)
                 if self.sentiment.sentimentEnabled {
                     self.sentimentProvider.process(samples: samples, timestamp: time)
                 }
@@ -317,11 +337,14 @@ final class RecordingCoordinator {
             )
         }
         
+        // Disconnect streaming STT if active
+        streamingSTT?.disconnect()
+
         transcription.finishSession()
         audio.resetLevels()
         recording.setStopped()
     }
-    
+
     func toggleRecording() async {
         switch recording.state {
         case .recording: await pauseRecording()
@@ -335,6 +358,8 @@ final class RecordingCoordinator {
         transcription.clearSession()
         sentiment.reset()
         coaching.reset()
+        diarizer.reset()
+        semanticSentiment.reset()
     }
     
     // MARK: - VAD → Whisper → Stores
@@ -375,10 +400,14 @@ final class RecordingCoordinator {
                         )
                         self.transcription.addSegment(tagged)
                         
-                        // Feed text to hybrid sentiment (prospect speech only)
+                        // Feed text to hybrid sentiment + semantic analyzer
                         if speaker == .other {
                             self.hybridSentiment.feedText(
                                 seg.text, speaker: speaker, timestamp: seg.startTime
+                            )
+                            // Semantic analysis (deeper than pattern matching)
+                            let _ = self.semanticSentiment.analyze(
+                                text: seg.text, speaker: speaker, timestamp: seg.startTime
                             )
                         }
                     }
@@ -409,11 +438,18 @@ final class RecordingCoordinator {
                 // Always store raw prosodic features (for UI gauges)
                 self.sentiment.updateSentiment(emotion: emotion, features: features)
                 
-                // Merge prosody × text for enriched commercial-aware emotion
-                let hybrid = self.hybridSentiment.merge(
-                    prosody: emotion,
-                    at: features.timestamp
-                )
+                // 3-channel merge: prosody × text patterns × semantic
+                let semanticSnapshot = self.semanticSentiment.recentTopics().isEmpty
+                    ? nil
+                    : self.semanticSentiment.analyze(
+                        text: "", speaker: .other, timestamp: features.timestamp
+                    )
+                let hybrid: HybridSentiment.HybridResult
+                if let hs = self.hybridSentiment as? HybridSentiment {
+                    hybrid = hs.merge(prosody: emotion, semantic: semanticSnapshot, at: features.timestamp)
+                } else {
+                    hybrid = self.hybridSentiment.merge(prosody: emotion, at: features.timestamp)
+                }
                 
                 // If text contributed meaningfully, use the hybrid result
                 if hybrid.dominantSource != .prosody {
@@ -514,6 +550,53 @@ final class RecordingCoordinator {
         }
     }
     
+    // MARK: - Diarization Pipeline
+
+    private func setupDiarizationCallbacks() {
+        diarizer.onSpeakerChange = { [weak self] speaker in
+            Task { @MainActor in
+                guard let self else { return }
+                let balance = self.diarizer.speakerBalance()
+                self.transcription.updateSpeakerInfo(
+                    activeSpeakers: self.diarizer.currentSpeakers(),
+                    balance: balance
+                )
+            }
+        }
+    }
+
+    // MARK: - Streaming STT Pipeline
+
+    private func setupStreamingSTTCallbacks() {
+        streamingSTT?.onPartialResult = { [weak self] partial in
+            Task { @MainActor in
+                self?.transcription.setLiveText(partial.text, speaker: .other)
+            }
+        }
+        streamingSTT?.onFinalResult = { [weak self] partial in
+            Task { @MainActor in
+                guard let self else { return }
+                let segment = partial.toSegment(speaker: .other, endTime: partial.timestamp + 3.0)
+                self.transcription.addSegment(segment)
+                self.hybridSentiment.feedText(partial.text, speaker: .other, timestamp: partial.timestamp)
+                let _ = self.semanticSentiment.analyze(text: partial.text, speaker: .other, timestamp: partial.timestamp)
+                self.updateCoaching()
+            }
+        }
+    }
+
+    /// Connect to a streaming STT server (e.g. Voxtral).
+    func connectStreamingSTT(config: STTServerConfig) async throws {
+        guard let stt = streamingSTT else { return }
+        try await stt.connect(config: config)
+        Log.transcription.info("Streaming STT connected: \(config.model) @ \(config.host):\(config.port)")
+    }
+
+    /// Disconnect from the streaming STT server.
+    func disconnectStreamingSTT() {
+        streamingSTT?.disconnect()
+    }
+
     // MARK: - Audio Reconnection
 
     /// Attempt to reconnect the microphone after an interruption (e.g. device disconnected).

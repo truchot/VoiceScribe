@@ -113,6 +113,75 @@ protocol PersistenceProvider: AnyObject {
     func stats() -> (sessions: Int, segments: Int, dbSizeMB: Double)
 }
 
+// MARK: - Diarization Provider Protocol
+
+/// Abstracts multi-speaker diarization (who is speaking when).
+/// Implementations: SpeakerDiarizer (embedding-based), MockDiarizer (tests)
+protocol DiarizationProvider: AnyObject {
+
+    /// Called when a speaker change is detected.
+    var onSpeakerChange: ((_ speaker: SpeakerProfile) -> Void)? { get set }
+
+    /// Process incoming audio samples for speaker identification.
+    func process(samples: [Float], timestamp: TimeInterval)
+
+    /// Identify which speaker produced the given audio samples.
+    func identifySpeaker(from samples: [Float]) -> SpeakerProfile?
+
+    /// All currently known speakers.
+    func currentSpeakers() -> [SpeakerProfile]
+
+    /// Speaking time balance across speakers.
+    func speakerBalance() -> SpeakerBalance
+
+    /// Reset all speaker state for a new session.
+    func reset()
+}
+
+// MARK: - Streaming Transcriber Provider Protocol
+
+/// Abstracts streaming (WebSocket-based) speech-to-text for real-time partial results.
+/// Implementations: WebSocketSTTClient, MockStreamingTranscriber (tests)
+protocol StreamingTranscriberProvider: AnyObject {
+
+    /// Called with partial (non-final) transcription updates.
+    var onPartialResult: ((PartialTranscription) -> Void)? { get set }
+
+    /// Called when a transcription segment is finalized.
+    var onFinalResult: ((PartialTranscription) -> Void)? { get set }
+
+    /// Current connection state.
+    var connectionState: STTConnectionState { get }
+
+    /// Connect to the remote STT server.
+    func connect(config: STTServerConfig) async throws
+
+    /// Disconnect from the server.
+    func disconnect()
+
+    /// Send audio samples for real-time transcription.
+    func sendAudio(samples: [Float], timestamp: TimeInterval)
+}
+
+// MARK: - Semantic Sentiment Provider Protocol
+
+/// Abstracts deep text semantic analysis (beyond keyword/pattern matching).
+/// Implementations: SemanticSentimentAnalyzer, MockSemanticSentiment (tests)
+protocol SemanticSentimentProvider: AnyObject {
+
+    /// Analyze text semantically: intent, topics, sentiment.
+    func analyze(text: String, speaker: Speaker, timestamp: TimeInterval) -> SemanticAnalysis
+
+    /// Topics detected across the conversation so far.
+    func recentTopics() -> [DetectedTopic]
+
+    /// Detect conversational intent from a text snippet.
+    func conversationIntent(from text: String) -> ConversationalIntent
+
+    /// Reset all state.
+    func reset()
+}
+
 // Conformances are in Application/ProtocolConformances.swift
 
 // MARK: - Hybrid Sentiment Provider Protocol
