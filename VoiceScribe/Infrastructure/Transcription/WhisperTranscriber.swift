@@ -2,13 +2,18 @@ import Foundation
 
 /// Swift wrapper around whisper.cpp for local speech-to-text transcription.
 /// Runs entirely on-device using Metal GPU acceleration on Apple Silicon.
+///
+/// Phase 1 improvements:
+/// - Model fallback chain: tries distil-large-v3 → large-v3-turbo → medium → small → base
+/// - Automatic language detection support ("auto")
+/// - RTF health monitoring via `lastRTF`
 final class WhisperTranscriber {
-    
+
     // MARK: - Configuration
-    
+
     struct Config {
         var modelPath: String
-        var language: String = "fr"       // "fr", "en", "auto" for auto-detect
+        var language: String = "auto"     // "auto" for auto-detect, "fr", "en", etc.
         var translate: Bool = false        // translate to English
         var threads: Int = 4              // CPU threads (for non-Metal fallback)
         var speedUp: Bool = false         // 2x speed at lower quality
@@ -16,52 +21,111 @@ final class WhisperTranscriber {
         var temperature: Float = 0.0      // 0 = greedy decoding (fastest)
         var noContext: Bool = true         // don't use previous context (better for streaming)
     }
-    
+
+    // MARK: - Model Fallback Chain
+
+    /// Ordered list of model sizes to try, from preferred to fallback.
+    /// distil-large-v3 is 6x faster than large-v3 with ~1% WER difference.
+    static let modelFallbackChain = [
+        "distil-large-v3",
+        "large-v3-turbo",
+        "large-v3",
+        "medium",
+        "small",
+        "base",
+        "tiny",
+    ]
+
+    /// Attempt to find the best available model from the fallback chain.
+    /// Returns the path of the first model found, or nil if none exist.
+    static func bestAvailableModelPath(preferredSize: String? = nil) -> String? {
+        // Build search order: preferred first, then the standard chain
+        var chain = modelFallbackChain
+        if let preferred = preferredSize {
+            chain.removeAll(where: { $0 == preferred })
+            chain.insert(preferred, at: 0)
+        }
+
+        let modelDirs = [
+            Bundle.main.bundleURL.deletingLastPathComponent().appendingPathComponent("Models").path,
+            FileManager.default.currentDirectoryPath + "/Models",
+            NSHomeDirectory() + "/Sites/VoiceScribe/Models",
+            NSHomeDirectory() + "/VoiceScribe/Models",
+            NSHomeDirectory() + "/Developer/VoiceScribe/Models",
+        ]
+
+        for size in chain {
+            let filename = "ggml-\(size).bin"
+
+            // Check bundle first
+            if let bundlePath = Bundle.main.path(forResource: filename, ofType: nil) {
+                Log.transcription.info("Found model in bundle: \(size)")
+                return bundlePath
+            }
+
+            // Check model directories
+            for dir in modelDirs {
+                let path = (dir as NSString).appendingPathComponent(filename)
+                if FileManager.default.fileExists(atPath: path) {
+                    Log.transcription.info("Found model via fallback chain: \(size) at \(dir)")
+                    return path
+                }
+            }
+        }
+
+        return nil
+    }
+
     // MARK: - Properties
-    
+
     private var context: OpaquePointer?  // whisper_context*
     private let config: Config
     private let transcribeQueue = DispatchQueue(label: "com.voicescribe.whisper", qos: .userInteractive)
     private var isLoaded = false
-    
+
+    /// Last Real-Time Factor for health monitoring.
+    /// RTF < 1.0 means transcription is faster than real-time (good).
+    /// RTF > 1.0 means transcription is falling behind (bad).
+    private(set) var lastRTF: Double = 0.0
+
     // MARK: - Init
-    
+
     init(config: Config) {
         self.config = config
     }
-    
+
     deinit {
         unloadModel()
     }
-    
+
     // MARK: - Model Management
-    
+
     /// Load the Whisper model into memory. Call once at startup.
     func loadModel() throws {
         guard !isLoaded else { return }
-        
+
         guard FileManager.default.fileExists(atPath: config.modelPath) else {
             throw WhisperError.modelNotFound(config.modelPath)
         }
-        
+
         Log.transcription.info("Loading Whisper model: \(self.config.modelPath)")
         let startTime = CFAbsoluteTimeGetCurrent()
-        
+
         // Initialize with default params (Metal is auto-detected)
         var cparams = whisper_context_default_params()
         cparams.use_gpu = true  // Use Metal on Apple Silicon
-        
+
         context = whisper_init_from_file_with_params(config.modelPath, cparams)
-        
+
         guard context != nil else {
             throw WhisperError.modelLoadFailed
         }
-        
+
         let elapsed = CFAbsoluteTimeGetCurrent() - startTime
         Log.transcription.info("Whisper model loaded in \(String(format: "%.1f", elapsed))s")
         isLoaded = true
     }
-    
+
     func unloadModel() {
         if let ctx = context {
             whisper_free(ctx)
@@ -70,9 +134,9 @@ final class WhisperTranscriber {
             Log.transcription.info("Whisper model unloaded")
         }
     }
-    
+
     // MARK: - Transcription
-    
+
     /// Transcribe a chunk of audio samples.
     /// - Parameters:
     ///   - samples: PCM Float32 audio at 16kHz mono
@@ -87,19 +151,26 @@ final class WhisperTranscriber {
             completion(.failure(WhisperError.modelNotLoaded))
             return
         }
-        
+
         guard !samples.isEmpty else {
             completion(.success([]))
             return
         }
-        
-        transcribeQueue.async { [config] in
+
+        transcribeQueue.async { [weak self, config] in
             // Configure whisper parameters
             var params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY)
-            
+
             let lang = config.language
             lang.withCString { langPtr in
-                params.language = langPtr
+                // For "auto", whisper.cpp handles auto-detection natively
+                if lang == "auto" {
+                    params.language = nil  // nil = auto-detect
+                    params.detect_language = true
+                } else {
+                    params.language = langPtr
+                    params.detect_language = false
+                }
                 params.translate = config.translate
                 params.n_threads = Int32(config.threads)
                 params.no_context = config.noContext
@@ -111,21 +182,21 @@ final class WhisperTranscriber {
                 params.print_special = false
                 params.suppress_blank = true
                 params.suppress_nst = true // suppress non-speech tokens
-                
+
                 // Run inference
                 let startTime = CFAbsoluteTimeGetCurrent()
-                
+
                 let result = samples.withUnsafeBufferPointer { bufferPtr in
                     whisper_full(ctx, params, bufferPtr.baseAddress, Int32(samples.count))
                 }
-                
+
                 let inferenceTime = CFAbsoluteTimeGetCurrent() - startTime
-                
+
                 guard result == 0 else {
                     completion(.failure(WhisperError.transcriptionFailed))
                     return
                 }
-                
+
                 // Check audio energy — skip if silence
                 let rms = sqrtf(samples.map { $0 * $0 }.reduce(0, +) / Float(samples.count))
                 if rms < 0.003 {
@@ -146,47 +217,53 @@ final class WhisperTranscriber {
 
                     // Skip known Whisper hallucinations during silence
                     if Self.isHallucination(text) { continue }
-                    
+
                     let segStart = TimeInterval(whisper_full_get_segment_t0(ctx, i)) / 100.0
                     let segEnd = TimeInterval(whisper_full_get_segment_t1(ctx, i)) / 100.0
-                    
+
                     let segment = TranscriptionSegment(
                         text: text,
                         startTime: chunkTime + segStart,
                         endTime: chunkTime + segEnd,
-                        speaker: .me,  // Phase 1: mic only = always "me"
+                        speaker: .me,  // Speaker is re-tagged by the coordinator
                         confidence: 1.0
                     )
                     segments.append(segment)
                 }
-                
+
                 let audioSeconds = Double(samples.count) / 16000.0
                 let rtf = inferenceTime / audioSeconds
-                Log.transcription.debug("\(numSegments) segments in \(String(format: "%.2f", inferenceTime))s (RTF: \(String(format: "%.2f", rtf))x)")
-                
+                self?.lastRTF = rtf
+
+                if rtf > 1.5 {
+                    Log.transcription.warning("RTF \(String(format: "%.2f", rtf))x — transcription falling behind real-time")
+                } else {
+                    Log.transcription.debug("\(numSegments) segments in \(String(format: "%.2f", inferenceTime))s (RTF: \(String(format: "%.2f", rtf))x)")
+                }
+
                 completion(.success(segments))
             }
         }
     }
-    
+
     /// Synchronous version for simpler usage
     func transcribeSync(samples: [Float], chunkTime: TimeInterval) throws -> [TranscriptionSegment] {
         var result: Result<[TranscriptionSegment], Error>?
         let semaphore = DispatchSemaphore(value: 0)
-        
+
         transcribe(samples: samples, chunkTime: chunkTime) {
             result = $0
             semaphore.signal()
         }
-        
+
         semaphore.wait()
-        
+
         switch result! {
         case .success(let segments): return segments
         case .failure(let error): throw error
         }
     }
-    
+
     // MARK: - Hallucination Filter
 
     private static let hallucinationPatterns: Set<String> = [
@@ -205,7 +282,7 @@ final class WhisperTranscriber {
         "bye.", "the end.", "fin.", "merci",
     ]
 
-    private static func isHallucination(_ text: String) -> Bool {
+    static func isHallucination(_ text: String) -> Bool {
         let lower = text.lowercased()
         if shortHallucinations.contains(lower) { return true }
         for pattern in hallucinationPatterns {
@@ -221,13 +298,13 @@ final class WhisperTranscriber {
     }
 
     // MARK: - Error Types
-    
+
     enum WhisperError: LocalizedError {
         case modelNotFound(String)
         case modelLoadFailed
         case modelNotLoaded
         case transcriptionFailed
-        
+
         var errorDescription: String? {
             switch self {
             case .modelNotFound(let path):

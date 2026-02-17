@@ -23,8 +23,8 @@ final class TranscriptionStore: ObservableObject {
     
     // MARK: - Settings
     
-    @AppStorage("whisperLanguage") var language: String = "fr"
-    @AppStorage("modelSize") var modelSize: String = "large-v3-turbo"
+    @AppStorage("whisperLanguage") var language: String = "auto"
+    @AppStorage("modelSize") var modelSize: String = "distil-large-v3"
     
     // MARK: - Dependencies
     

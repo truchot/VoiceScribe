@@ -109,36 +109,95 @@ final class RecordingCoordinator {
         setupSentimentCallbacks()
     }
     
-    // MARK: - Model Loading
-    
+    /// Maximum audio reconnection attempts before giving up.
+    private static let maxReconnectAttempts = 3
+    private var reconnectAttempts = 0
+
+    // MARK: - Model Loading (with fallback chain)
+
     func loadModel() async {
         recording.setLoading()
-        
-        guard let modelPath = findModelPath() else {
-            recording.setError("Modèle introuvable. Lancez ./setup.sh")
+
+        // Use the fallback chain: tries distil-large-v3 first, then falls back
+        let preferredSize = transcription.modelSize
+        guard let modelPath = WhisperTranscriber.bestAvailableModelPath(preferredSize: preferredSize)
+                ?? findModelPath() else {
+            recording.setError("Aucun modèle trouvé. Lancez ./setup.sh distil-large-v3")
             return
         }
-        
+
         let language = transcription.language
-        
+
         do {
             let t1 = makeTranscriber(modelPath, language)
             let t2 = makeTranscriber(modelPath, language)
-            
+
             try await Task.detached(priority: .userInitiated) {
                 try t1.loadModel()
                 try t2.loadModel()
             }.value
-            
+
             whisperMic = t1
             whisperSystem = t2
             recording.setReady()
-            
+
+            // Log the loaded model name
+            let modelName = (modelPath as NSString).lastPathComponent
+                .replacingOccurrences(of: "ggml-", with: "")
+                .replacingOccurrences(of: ".bin", with: "")
+            Log.transcription.info("Active model: \(modelName) (language: \(language))")
+
             await audio.checkPermissions()
             if globalHotkeysEnabled { hotkeys.enable() }
         } catch {
-            recording.setError(error.localizedDescription)
+            // If the preferred model fails, try the next one in the chain
+            Log.transcription.warning("Model load failed: \(error.localizedDescription). Attempting fallback...")
+            await loadModelWithFallback(excluding: modelPath)
         }
+    }
+
+    /// Try remaining models in the fallback chain after the primary fails.
+    private func loadModelWithFallback(excluding failedPath: String) async {
+        let language = transcription.language
+        let modelDirs = [
+            Bundle.main.bundleURL.deletingLastPathComponent().appendingPathComponent("Models").path,
+            FileManager.default.currentDirectoryPath + "/Models",
+            NSHomeDirectory() + "/Sites/VoiceScribe/Models",
+            NSHomeDirectory() + "/VoiceScribe/Models",
+            NSHomeDirectory() + "/Developer/VoiceScribe/Models",
+        ]
+
+        for size in WhisperTranscriber.modelFallbackChain {
+            let filename = "ggml-\(size).bin"
+            for dir in modelDirs {
+                let path = (dir as NSString).appendingPathComponent(filename)
+                guard path != failedPath, FileManager.default.fileExists(atPath: path) else { continue }
+
+                do {
+                    let t1 = makeTranscriber(path, language)
+                    let t2 = makeTranscriber(path, language)
+
+                    try await Task.detached(priority: .userInitiated) {
+                        try t1.loadModel()
+                        try t2.loadModel()
+                    }.value
+
+                    whisperMic = t1
+                    whisperSystem = t2
+                    recording.setReady()
+                    Log.transcription.info("Fallback model loaded: \(size)")
+
+                    await audio.checkPermissions()
+                    if globalHotkeysEnabled { hotkeys.enable() }
+                    return
+                } catch {
+                    Log.transcription.warning("Fallback \(size) also failed: \(error.localizedDescription)")
+                    continue
+                }
+            }
+        }
+
+        recording.setError("Aucun modèle n'a pu être chargé. Lancez ./setup.sh")
     }
     
     // MARK: - Recording Lifecycle
@@ -177,7 +236,8 @@ final class RecordingCoordinator {
         sentimentProvider = makeSentiment(Float(sentiment.sentimentSmoothing))
         setupSentimentCallbacks()
         
-        // Start mic capture
+        // Start mic capture (with reconnection resilience)
+        reconnectAttempts = 0
         audio.audioCapture.configure(AudioCaptureManager.Config(chunkDuration: 0.5))
         audio.audioCapture.onAudioChunk = { [weak self] samples, time in
             guard let self else { return }
@@ -187,7 +247,12 @@ final class RecordingCoordinator {
             let level = absSum / Float(samples.count)
             Task { @MainActor in self.audio.updateMicLevel(level * 8.0) }
         }
-        
+        audio.audioCapture.onCaptureInterrupted = { [weak self] in
+            Task { @MainActor in
+                self?.attemptMicReconnection()
+            }
+        }
+
         do {
             try audio.audioCapture.startCapturing()
         } catch {
@@ -449,8 +514,41 @@ final class RecordingCoordinator {
         }
     }
     
+    // MARK: - Audio Reconnection
+
+    /// Attempt to reconnect the microphone after an interruption (e.g. device disconnected).
+    /// Retries up to `maxReconnectAttempts` with exponential backoff.
+    private func attemptMicReconnection() {
+        guard recording.state == .recording else { return }
+        guard reconnectAttempts < Self.maxReconnectAttempts else {
+            recording.setError("Microphone déconnecté. Reconnexion échouée après \(Self.maxReconnectAttempts) tentatives.")
+            return
+        }
+
+        reconnectAttempts += 1
+        let attempt = reconnectAttempts
+        let delay = Double(1 << attempt) // 2s, 4s, 8s exponential backoff
+
+        Log.audio.warning("Microphone interrompu. Tentative de reconnexion \(attempt)/\(Self.maxReconnectAttempts) dans \(delay)s...")
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard self.recording.state == .recording else { return }
+
+            do {
+                self.audio.audioCapture.stopCapturing()
+                try self.audio.audioCapture.startCapturing()
+                self.reconnectAttempts = 0
+                Log.audio.info("Microphone reconnecté avec succès")
+            } catch {
+                Log.audio.warning("Reconnexion échouée: \(error.localizedDescription)")
+                self.attemptMicReconnection()
+            }
+        }
+    }
+
     // MARK: - Hotkeys
-    
+
     private func setupHotkeys() {
         hotkeys.onToggleRecording = { [weak self] in
             Task { @MainActor in await self?.toggleRecording() }

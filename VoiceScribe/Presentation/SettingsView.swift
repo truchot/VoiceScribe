@@ -8,8 +8,8 @@ struct SettingsView: View {
     @EnvironmentObject var sentiment: SentimentStore
     @EnvironmentObject var overlay: OverlayManager
     
-    @AppStorage("whisperLanguage") private var language = "fr"
-    @AppStorage("modelSize") private var modelSize = "large-v3-turbo"
+    @AppStorage("whisperLanguage") private var language = "auto"
+    @AppStorage("modelSize") private var modelSize = "distil-large-v3"
     @AppStorage("globalHotkeysEnabled") private var globalHotkeysEnabled = true
     @AppStorage("vadSensitivity") private var vadSensitivity = 0.5
     @AppStorage("sentimentSmoothingFactor") private var sentimentSmoothing = 0.7
@@ -33,9 +33,12 @@ struct SettingsView: View {
         Form {
             Section("Modèle Whisper") {
                 Picker("Taille", selection: $modelSize) {
-                    Text("Tiny (~75 Mo)").tag("tiny"); Text("Base (~142 Mo)").tag("base")
-                    Text("Small (~466 Mo)").tag("small"); Text("Medium (~1.5 Go)").tag("medium")
-                    Text("Large V3 Turbo ⭐").tag("large-v3-turbo")
+                    Text("Distil Large V3 ⭐ (6x plus rapide)").tag("distil-large-v3")
+                    Text("Large V3 Turbo").tag("large-v3-turbo")
+                    Text("Medium (~1.5 Go)").tag("medium")
+                    Text("Small (~466 Mo)").tag("small")
+                    Text("Base (~142 Mo)").tag("base")
+                    Text("Tiny (~75 Mo)").tag("tiny")
                 }
                 HStack {
                     Text("État:")
@@ -47,7 +50,9 @@ struct SettingsView: View {
             }
             Section("Langue") {
                 Picker("Transcription", selection: $language) {
-                    Text("Français").tag("fr"); Text("English").tag("en"); Text("Deutsch").tag("de"); Text("Auto").tag("auto")
+                    Text("Auto-detect ⭐").tag("auto")
+                    Text("Français").tag("fr"); Text("English").tag("en")
+                    Text("Deutsch").tag("de"); Text("Español").tag("es")
                 }
             }
             Section("Stockage") {

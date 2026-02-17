@@ -52,8 +52,8 @@ final class TranscriptionEngine: ObservableObject {
     
     // MARK: - Settings
     
-    @AppStorage("whisperLanguage") var language: String = "fr"
-    @AppStorage("modelSize") var modelSize: String = "large-v3-turbo"
+    @AppStorage("whisperLanguage") var language: String = "auto"
+    @AppStorage("modelSize") var modelSize: String = "distil-large-v3"
     @AppStorage("globalHotkeysEnabled") var globalHotkeysEnabled: Bool = true
     @AppStorage("vadSensitivity") var vadSensitivity: Double = 0.5
     @AppStorage("sentimentSmoothingFactor") var sentimentSmoothing: Double = 0.7
