@@ -12,11 +12,14 @@ import Foundation
 /// All processing is local, no ML model required (<5ms per analysis).
 final class SemanticSentimentAnalyzer: SemanticSentimentProvider {
 
-    // MARK: - State
+    // MARK: - State (protected by stateQueue)
 
     private var detectedTopics: [DetectedTopic] = []
     private var conversationContext: [ContextEntry] = []
     private let maxContextEntries = 50
+
+    /// Serializes all mutable state access.
+    private let stateQueue = DispatchQueue(label: "com.voicescribe.semantic.state")
 
     // MARK: - Analysis
 
@@ -25,17 +28,20 @@ final class SemanticSentimentAnalyzer: SemanticSentimentProvider {
         guard !lower.isEmpty else { return .empty(at: timestamp) }
 
         let intent = detectIntent(lower)
-        let topics = detectTopics(lower, timestamp: timestamp)
         let sentiment = analyzeSentiment(lower, intent: intent)
         let confidence = computeConfidence(text)
 
-        // Track context
-        conversationContext.append(ContextEntry(
-            text: lower, speaker: speaker, intent: intent,
-            sentiment: sentiment, timestamp: timestamp
-        ))
-        if conversationContext.count > maxContextEntries {
-            conversationContext.removeFirst()
+        // Mutable state access — synchronized
+        let topics = stateQueue.sync { () -> [DetectedTopic] in
+            let t = detectTopics(lower, timestamp: timestamp)
+            conversationContext.append(ContextEntry(
+                text: lower, speaker: speaker, intent: intent,
+                sentiment: sentiment, timestamp: timestamp
+            ))
+            if conversationContext.count > maxContextEntries {
+                conversationContext.removeFirst()
+            }
+            return t
         }
 
         return SemanticAnalysis(
@@ -48,7 +54,7 @@ final class SemanticSentimentAnalyzer: SemanticSentimentProvider {
     }
 
     func recentTopics() -> [DetectedTopic] {
-        detectedTopics
+        stateQueue.sync { detectedTopics }
     }
 
     func conversationIntent(from text: String) -> ConversationalIntent {
@@ -56,8 +62,10 @@ final class SemanticSentimentAnalyzer: SemanticSentimentProvider {
     }
 
     func reset() {
-        detectedTopics.removeAll()
-        conversationContext.removeAll()
+        stateQueue.sync {
+            detectedTopics.removeAll()
+            conversationContext.removeAll()
+        }
     }
 
     // MARK: - Intent Detection

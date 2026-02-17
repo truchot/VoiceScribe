@@ -83,9 +83,9 @@ final class RecordingCoordinator {
         sentimentProvider: SentimentProvider,
         coachEngine: CoachingProvider,
         hybridSentiment: HybridSentimentProvider,
-        diarizer: DiarizationProvider = SpeakerDiarizer(),
+        diarizer: DiarizationProvider,
         streamingSTT: StreamingTranscriberProvider? = nil,
-        semanticSentiment: SemanticSentimentProvider = SemanticSentimentAnalyzer(),
+        semanticSentiment: SemanticSentimentProvider,
         makeVAD: @escaping (_ speechThreshold: Float) -> VADProvider,
         makeSentiment: @escaping (_ smoothingFactor: Float) -> SentimentProvider,
         makeTranscriber: @escaping (_ modelPath: String, _ language: String) -> TranscriberProvider
@@ -456,17 +456,15 @@ final class RecordingCoordinator {
                 self.sentiment.updateSentiment(emotion: emotion, features: features)
                 
                 // 3-channel merge: prosody × text patterns × semantic
-                let semanticSnapshot = self.semanticSentiment.recentTopics().isEmpty
+                // Protocol now exposes merge(prosody:semantic:at:) — no downcast needed.
+                let semanticSnapshot: SemanticAnalysis? = self.semanticSentiment.recentTopics().isEmpty
                     ? nil
                     : self.semanticSentiment.analyze(
                         text: "", speaker: .other, timestamp: features.timestamp
                     )
-                let hybrid: HybridSentiment.HybridResult
-                if let hs = self.hybridSentiment as? HybridSentiment {
-                    hybrid = hs.merge(prosody: emotion, semantic: semanticSnapshot, at: features.timestamp)
-                } else {
-                    hybrid = self.hybridSentiment.merge(prosody: emotion, at: features.timestamp)
-                }
+                let hybrid = self.hybridSentiment.merge(
+                    prosody: emotion, semantic: semanticSnapshot, at: features.timestamp
+                )
                 
                 // If text contributed meaningfully, use the hybrid result
                 if hybrid.dominantSource != .prosody {

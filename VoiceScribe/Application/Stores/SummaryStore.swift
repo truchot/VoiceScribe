@@ -26,9 +26,21 @@ final class SummaryStore: ObservableObject {
     // MARK: - Settings
 
     @AppStorage("llmBackend") var llmBackendRaw: String = LLMBackend.local.rawValue
-    @AppStorage("llmApiKey") var apiKey: String = ""
     @AppStorage("autoSummaryEnabled") var autoSummaryEnabled: Bool = true
     @AppStorage("suggestionsEnabled") var suggestionsEnabled: Bool = true
+
+    /// API key stored in macOS Keychain (not UserDefaults).
+    var apiKey: String {
+        get { KeychainService.shared.get(forKey: "llmApiKey") ?? "" }
+        set {
+            if newValue.isEmpty {
+                KeychainService.shared.delete(forKey: "llmApiKey")
+            } else {
+                KeychainService.shared.set(newValue, forKey: "llmApiKey")
+            }
+            objectWillChange.send()
+        }
+    }
 
     var llmBackend: LLMBackend {
         LLMBackend(rawValue: llmBackendRaw) ?? .local
@@ -41,6 +53,7 @@ final class SummaryStore: ObservableObject {
     // MARK: - Dependencies
 
     private var llmProvider: LLMProvider
+    private var apiLLMProvider: LLMProvider
     private var analytics: AnalyticsProvider
 
     /// Throttle suggestion generation.
@@ -49,9 +62,17 @@ final class SummaryStore: ObservableObject {
 
     // MARK: - Init
 
-    init(llmProvider: LLMProvider = LocalLLMProvider(), analytics: AnalyticsProvider = AnalyticsEngine()) {
+    init(
+        llmProvider: LLMProvider = LocalLLMProvider(),
+        apiLLMProvider: LLMProvider = APILLMProvider(),
+        analytics: AnalyticsProvider = AnalyticsEngine()
+    ) {
         self.llmProvider = llmProvider
+        self.apiLLMProvider = apiLLMProvider
         self.analytics = analytics
+
+        // One-time migration: move API key from UserDefaults to Keychain
+        KeychainService.shared.migrateFromUserDefaults(key: "llmApiKey")
     }
 
     // MARK: - Summary Generation
@@ -156,7 +177,7 @@ final class SummaryStore: ObservableObject {
             return llmProvider
         case .claudeAPI, .openAIAPI:
             if apiKey.isEmpty { return llmProvider } // Fallback to local
-            return APILLMProvider()
+            return apiLLMProvider
         }
     }
 }

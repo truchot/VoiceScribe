@@ -18,6 +18,10 @@ struct CoachingAnalyticsView: View {
     @State private var searchResults: [SemanticSearchResult] = []
     private let analyticsEngine = AnalyticsEngine()
 
+    // Preloaded data to avoid DB queries in view body
+    @State private var sessionSnapshots: [UUID: Int] = [:]
+    @State private var sessionAlerts: [UUID: Int] = [:]
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
@@ -234,16 +238,12 @@ struct CoachingAnalyticsView: View {
                             }
                             Spacer()
                             
-                            let snapshots = SessionPersistence.shared.loadSnapshots(sessionId: entry.sessionId)
-                            let alerts = SessionPersistence.shared.loadAlerts(sessionId: entry.sessionId)
-                            
                             HStack(spacing: 6) {
-                                if !snapshots.isEmpty {
-                                    let movements = Set(snapshots.map(\.movement)).count
-                                    Text("\(movements) mvt").font(.system(size: 8, design: .monospaced)).foregroundStyle(.blue)
+                                if let movementCount = sessionSnapshots[entry.sessionId], movementCount > 0 {
+                                    Text("\(movementCount) mvt").font(.system(size: 8, design: .monospaced)).foregroundStyle(.blue)
                                 }
-                                if !alerts.isEmpty {
-                                    Text("\(alerts.count) ⚠️").font(.system(size: 8, design: .monospaced)).foregroundStyle(.orange)
+                                if let alertCount = sessionAlerts[entry.sessionId], alertCount > 0 {
+                                    Text("\(alertCount) ⚠️").font(.system(size: 8, design: .monospaced)).foregroundStyle(.orange)
                                 }
                             }
                             
@@ -300,10 +300,10 @@ struct CoachingAnalyticsView: View {
             // Movement timeline
             let timeline = SessionPersistence.shared.reconstructTimeline(sessionId: sessionId)
             if !timeline.isEmpty {
+                let totalDur = timeline.map { $0.end - $0.start }.reduce(0, +)
                 Text("Timeline").font(.system(size: 9)).fontWeight(.semibold).foregroundStyle(.secondary)
                 HStack(spacing: 1) {
                     ForEach(Array(timeline.enumerated()), id: \.offset) { _, entry in
-                        let totalDur = timeline.map { $0.end - $0.start }.reduce(0, +)
                         let ratio = totalDur > 0 ? CGFloat((entry.end - entry.start) / totalDur) : 0
                         
                         VStack(spacing: 1) {
@@ -418,6 +418,17 @@ struct CoachingAnalyticsView: View {
         objectionStats = p.objectionStats()
         qualTrend = p.qualificationTrend()
         coachingStats = p.coachingStats()
+
+        // Preload per-session data to avoid DB queries in view body
+        var snaps: [UUID: Int] = [:]
+        var alerts: [UUID: Int] = [:]
+        for entry in qualTrend {
+            let s = p.loadSnapshots(sessionId: entry.sessionId)
+            snaps[entry.sessionId] = Set(s.map(\.movement)).count
+            alerts[entry.sessionId] = p.loadAlerts(sessionId: entry.sessionId).count
+        }
+        sessionSnapshots = snaps
+        sessionAlerts = alerts
 
         // Load AI insights
         analyticsEngine.refresh()

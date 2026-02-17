@@ -10,7 +10,7 @@ final class CoachingStore: ObservableObject {
     
     // MARK: - Published State
     
-    @Published private(set) var coachingOutput: ConversationCoach.CoachingOutput?
+    @Published private(set) var coachingOutput: CoachingOutput?
     @Published private(set) var currentMovement: ConversationMovement = .accueil
     @Published var coachingEnabled = true
     
@@ -26,7 +26,7 @@ final class CoachingStore: ObservableObject {
         self.coach = coach
     }
     
-    func updateAdvice(_ output: ConversationCoach.CoachingOutput) {
+    func updateAdvice(_ output: CoachingOutput) {
         coachingOutput = output
         currentMovement = output.movement
     }

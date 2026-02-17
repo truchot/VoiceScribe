@@ -21,13 +21,30 @@ enum LLMBackend: String, Codable, CaseIterable {
 }
 
 /// Configuration for LLM-based text generation.
+/// Immutable value object.
 struct LLMConfig: Codable, Equatable {
-    var backend: LLMBackend = .local
-    var apiKey: String = ""
-    var model: String = "claude-sonnet-4-5-20250929"
-    var maxTokens: Int = 1024
-    var temperature: Float = 0.3
-    var systemPrompt: String = ""
+    let backend: LLMBackend
+    let apiKey: String
+    let model: String
+    let maxTokens: Int
+    let temperature: Float
+    let systemPrompt: String
+
+    init(
+        backend: LLMBackend = .local,
+        apiKey: String = "",
+        model: String = "claude-sonnet-4-5-20250929",
+        maxTokens: Int = 1024,
+        temperature: Float = 0.3,
+        systemPrompt: String = ""
+    ) {
+        self.backend = backend
+        self.apiKey = apiKey
+        self.model = model
+        self.maxTokens = max(1, maxTokens)
+        self.temperature = max(0, min(2, temperature))
+        self.systemPrompt = systemPrompt
+    }
 
     static let `default` = LLMConfig()
 }

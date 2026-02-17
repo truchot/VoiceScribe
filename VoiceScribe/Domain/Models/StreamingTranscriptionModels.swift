@@ -23,14 +23,24 @@ enum STTBackend: String, Codable, CaseIterable {
 // MARK: - STT Server Config (Value Object)
 
 /// Configuration for a remote STT server endpoint.
+/// Immutable value object with validation.
 struct STTServerConfig: Codable, Equatable {
-    var host: String = "localhost"
-    var port: Int = 8765
-    var language: String = "auto"
-    var model: String = "voxtral"
+    let host: String
+    let port: Int
+    let language: String
+    let model: String
+
+    init(host: String = "localhost", port: Int = 8765, language: String = "auto", model: String = "voxtral") {
+        self.host = host
+        self.port = max(1, min(65535, port))
+        self.language = language
+        self.model = model
+    }
 
     var webSocketURL: URL? {
-        URL(string: "ws://\(host):\(port)/transcribe")
+        // Only allow wss:// in production; ws:// for localhost
+        let scheme = (host == "localhost" || host == "127.0.0.1") ? "ws" : "wss"
+        return URL(string: "\(scheme)://\(host):\(port)/transcribe")
     }
 
     static let `default` = STTServerConfig()

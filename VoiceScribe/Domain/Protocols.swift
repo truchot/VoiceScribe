@@ -72,7 +72,7 @@ protocol CoachingProvider: AnyObject {
         allSegments: [TranscriptionSegment],
         emotion: EmotionalState,
         elapsed: TimeInterval
-    ) -> ConversationCoach.CoachingOutput
+    ) -> CoachingOutput
     
     /// Manual movement override.
     func overrideMovement(_ movement: ConversationMovement, at elapsed: TimeInterval)
@@ -232,13 +232,16 @@ protocol AnalyticsProvider: AnyObject {
 /// Abstracts text × prosody sentiment merging.
 /// Implementations: HybridSentiment, MockHybridSentiment (tests)
 protocol HybridSentimentProvider: AnyObject {
-    
+
     /// Feed transcribed text for analysis.
     func feedText(_ text: String, speaker: Speaker, timestamp: TimeInterval)
-    
+
     /// Merge prosodic analysis with recent text signals.
-    func merge(prosody: EmotionalState, at timestamp: TimeInterval) -> HybridSentiment.HybridResult
-    
+    func merge(prosody: EmotionalState, at timestamp: TimeInterval) -> HybridSentimentResult
+
+    /// 3-channel merge: prosody + text patterns + semantic analysis.
+    func merge(prosody: EmotionalState, semantic: SemanticAnalysis?, at timestamp: TimeInterval) -> HybridSentimentResult
+
     /// Reset all state.
     func reset()
 }

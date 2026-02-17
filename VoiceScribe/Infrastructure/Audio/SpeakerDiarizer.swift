@@ -7,33 +7,30 @@ import Accelerate
 /// distinct speakers. Uses MFCC-like spectral features as a lightweight
 /// alternative to neural speaker embeddings, suitable for real-time use.
 ///
+/// Thread safety: all mutable state is protected by `stateQueue`.
+///
 /// Pipeline:
 /// ```
-/// Audio → Frame → FFT → Mel bands → Embedding → Cosine similarity → Cluster
+/// Audio -> Frame -> FFT -> Mel bands -> Embedding -> Cosine similarity -> Cluster
 /// ```
 final class SpeakerDiarizer: DiarizationProvider {
 
     // MARK: - Configuration
 
     struct Config {
-        /// Minimum cosine similarity to consider two embeddings as the same speaker.
         var identityThreshold: Float = 0.85
-        /// Maximum number of speakers to track.
         var maxSpeakers: Int = 8
-        /// Minimum RMS energy to consider as speech (not silence).
         var minSpeechEnergy: Float = 0.01
-        /// Number of audio chunks to average for a stable embedding.
         var embeddingAverageWindow: Int = 3
     }
 
-    /// Dimension of the speaker embedding vector.
     static let embeddingDimension = 32
 
     // MARK: - Protocol Callbacks
 
     var onSpeakerChange: ((_ speaker: SpeakerProfile) -> Void)?
 
-    // MARK: - State
+    // MARK: - State (protected by stateQueue)
 
     private var config: Config
     private var speakers: [SpeakerProfile] = []
@@ -43,10 +40,29 @@ final class SpeakerDiarizer: DiarizationProvider {
     private var lastTimestamp: TimeInterval = 0
     private var recentEmbeddings: [[Float]] = []
 
+    /// Serializes all mutable state access.
+    private let stateQueue = DispatchQueue(label: "com.voicescribe.diarizer.state")
+
+    // MARK: - FFT Setup (created once, reused across calls)
+
+    private let fftSetup: FFTSetup?
+    private let fftLog2n: vDSP_Length
+    private let fftFrameSize = 512
+
     // MARK: - Init
 
     init(config: Config = Config()) {
         self.config = config
+        // Pre-compute FFT setup once (expensive to create per-call)
+        let log2n = vDSP_Length(log2(Float(fftFrameSize)))
+        self.fftLog2n = log2n
+        self.fftSetup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2))
+    }
+
+    deinit {
+        if let setup = fftSetup {
+            vDSP_destroy_fftsetup(setup)
+        }
     }
 
     // MARK: - DiarizationProvider
@@ -57,41 +73,46 @@ final class SpeakerDiarizer: DiarizationProvider {
         let embedding = extractEmbedding(from: samples)
         guard embedding.contains(where: { $0 != 0 }) else { return }
 
-        // Average recent embeddings for stability
-        recentEmbeddings.append(embedding)
-        if recentEmbeddings.count > config.embeddingAverageWindow {
-            recentEmbeddings.removeFirst()
-        }
-        let averaged = averageEmbeddings(recentEmbeddings)
-
-        // Find best matching speaker
-        let (bestIndex, bestSimilarity) = findBestMatch(averaged)
-
-        let duration = timestamp > lastTimestamp ? timestamp - lastTimestamp : 0
-        lastTimestamp = timestamp
-
-        if let bestIndex, bestSimilarity >= config.identityThreshold {
-            // Known speaker
-            speakers[bestIndex].recordSegment(duration: duration)
-            speakerTimes[speakers[bestIndex].id, default: 0] += duration
-            totalTime += duration
-
-            if currentSpeakerIndex != bestIndex {
-                currentSpeakerIndex = bestIndex
-                onSpeakerChange?(speakers[bestIndex])
+        stateQueue.sync {
+            // Average recent embeddings for stability
+            recentEmbeddings.append(embedding)
+            if recentEmbeddings.count > config.embeddingAverageWindow {
+                recentEmbeddings.removeFirst()
             }
-        } else if speakers.count < config.maxSpeakers {
-            // New speaker
-            var newSpeaker = SpeakerProfile(
-                label: "Participant \(speakers.count + 1)",
-                embedding: averaged
-            )
-            newSpeaker.recordSegment(duration: duration)
-            speakerTimes[newSpeaker.id] = duration
-            totalTime += duration
-            speakers.append(newSpeaker)
-            currentSpeakerIndex = speakers.count - 1
-            onSpeakerChange?(newSpeaker)
+            let averaged = averageEmbeddings(recentEmbeddings)
+
+            let (bestIndex, bestSimilarity) = findBestMatch(averaged)
+
+            let duration = timestamp > lastTimestamp ? timestamp - lastTimestamp : 0
+            lastTimestamp = timestamp
+
+            if let bestIndex, bestSimilarity >= config.identityThreshold {
+                speakers[bestIndex].recordSegment(duration: duration)
+                speakerTimes[speakers[bestIndex].id, default: 0] += duration
+                totalTime += duration
+
+                if currentSpeakerIndex != bestIndex {
+                    currentSpeakerIndex = bestIndex
+                    let speaker = speakers[bestIndex]
+                    stateQueue.async { [weak self] in
+                        self?.onSpeakerChange?(speaker)
+                    }
+                }
+            } else if speakers.count < config.maxSpeakers {
+                var newSpeaker = SpeakerProfile(
+                    label: "Participant \(speakers.count + 1)",
+                    embedding: averaged
+                )
+                newSpeaker.recordSegment(duration: duration)
+                speakerTimes[newSpeaker.id] = duration
+                totalTime += duration
+                speakers.append(newSpeaker)
+                currentSpeakerIndex = speakers.count - 1
+                let speaker = newSpeaker
+                stateQueue.async { [weak self] in
+                    self?.onSpeakerChange?(speaker)
+                }
+            }
         }
     }
 
@@ -100,34 +121,36 @@ final class SpeakerDiarizer: DiarizationProvider {
         let embedding = extractEmbedding(from: samples)
         guard embedding.contains(where: { $0 != 0 }) else { return nil }
 
-        let (bestIndex, bestSimilarity) = findBestMatch(embedding)
-        guard let bestIndex, bestSimilarity >= config.identityThreshold else { return nil }
-        return speakers[bestIndex]
+        return stateQueue.sync {
+            let (bestIndex, bestSimilarity) = findBestMatch(embedding)
+            guard let bestIndex, bestSimilarity >= config.identityThreshold else { return nil }
+            return speakers[bestIndex]
+        }
     }
 
     func currentSpeakers() -> [SpeakerProfile] {
-        speakers
+        stateQueue.sync { speakers }
     }
 
     func speakerBalance() -> SpeakerBalance {
-        SpeakerBalance(speakerTimes: speakerTimes, totalTime: totalTime)
+        stateQueue.sync { SpeakerBalance(speakerTimes: speakerTimes, totalTime: totalTime) }
     }
 
     func reset() {
-        speakers.removeAll()
-        currentSpeakerIndex = nil
-        speakerTimes.removeAll()
-        totalTime = 0
-        lastTimestamp = 0
-        recentEmbeddings.removeAll()
+        stateQueue.sync {
+            speakers.removeAll()
+            currentSpeakerIndex = nil
+            speakerTimes.removeAll()
+            totalTime = 0
+            lastTimestamp = 0
+            recentEmbeddings.removeAll()
+        }
     }
 
     // MARK: - Embedding Extraction
 
-    /// Extract a spectral embedding vector from audio samples.
-    /// Uses simplified MFCC-like features: FFT → Mel filterbank → DCT.
     func extractEmbedding(from samples: [Float]) -> [Float] {
-        let frameSize = 512
+        let frameSize = fftFrameSize
         let hopSize = 256
         let numMelBands = Self.embeddingDimension
         let sampleRate: Float = 16000
@@ -136,29 +159,22 @@ final class SpeakerDiarizer: DiarizationProvider {
             return [Float](repeating: 0, count: numMelBands)
         }
 
-        // Process frames and accumulate mel band energies
         var melAccumulator = [Float](repeating: 0, count: numMelBands)
         var frameCount: Float = 0
 
         var i = 0
         while i + frameSize <= samples.count {
-            let frame = Array(samples[i..<(i + frameSize)])
+            // Use ArraySlice to avoid per-frame allocation
+            let frameSlice = samples[i..<(i + frameSize)]
 
-            // Apply Hann window
-            let windowed = applyHannWindow(frame)
-
-            // FFT magnitude spectrum
+            let windowed = applyHannWindow(frameSlice)
             let magnitudes = fftMagnitude(windowed)
-
-            // Mel filterbank
             let melEnergies = melFilterbank(magnitudes, numBands: numMelBands, sampleRate: sampleRate, fftSize: frameSize)
 
-            // Accumulate
             for j in 0..<numMelBands {
                 melAccumulator[j] += melEnergies[j]
             }
             frameCount += 1
-
             i += hopSize
         }
 
@@ -166,7 +182,6 @@ final class SpeakerDiarizer: DiarizationProvider {
             return [Float](repeating: 0, count: numMelBands)
         }
 
-        // Average and log-compress
         var embedding = melAccumulator.map { log(max($0 / frameCount, 1e-10)) }
 
         // L2 normalize
@@ -219,7 +234,7 @@ final class SpeakerDiarizer: DiarizationProvider {
 
     // MARK: - DSP Helpers
 
-    private func applyHannWindow(_ frame: [Float]) -> [Float] {
+    private func applyHannWindow(_ frame: ArraySlice<Float>) -> [Float] {
         let n = frame.count
         return frame.enumerated().map { i, sample in
             let w = 0.5 * (1.0 - cos(2.0 * Float.pi * Float(i) / Float(n - 1)))
@@ -229,12 +244,9 @@ final class SpeakerDiarizer: DiarizationProvider {
 
     private func fftMagnitude(_ frame: [Float]) -> [Float] {
         let n = frame.count
-        let log2n = vDSP_Length(log2(Float(n)))
-
-        guard let fftSetup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2)) else {
+        guard let fftSetup else {
             return [Float](repeating: 0, count: n / 2)
         }
-        defer { vDSP_destroy_fftsetup(fftSetup) }
 
         var realPart = [Float](repeating: 0, count: n / 2)
         var imagPart = [Float](repeating: 0, count: n / 2)
@@ -246,9 +258,8 @@ final class SpeakerDiarizer: DiarizationProvider {
             }
         }
 
-        vDSP_fft_zrip(fftSetup, &splitComplex, 1, log2n, FFTDirection(FFT_FORWARD))
+        vDSP_fft_zrip(fftSetup, &splitComplex, 1, fftLog2n, FFTDirection(FFT_FORWARD))
 
-        // Compute magnitudes
         var magnitudes = [Float](repeating: 0, count: n / 2)
         vDSP_zvmags(&splitComplex, 1, &magnitudes, 1, vDSP_Length(n / 2))
         var sqrtMags = [Float](repeating: 0, count: n / 2)
@@ -264,7 +275,6 @@ final class SpeakerDiarizer: DiarizationProvider {
         let minMel = hzToMel(0)
         let maxMel = hzToMel(maxFreq)
 
-        // Create mel scale filter center frequencies
         let melPoints = (0...numBands + 1).map { i in
             minMel + Float(i) * (maxMel - minMel) / Float(numBands + 1)
         }

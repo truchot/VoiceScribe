@@ -66,11 +66,12 @@ struct DiarizationSegment: Identifiable {
     var duration: TimeInterval { endTime - startTime }
 
     init(speaker: SpeakerProfile, startTime: TimeInterval, endTime: TimeInterval, confidence: Float = 1.0) {
+        precondition(endTime >= startTime, "endTime must be >= startTime")
         self.id = UUID()
         self.speakerProfile = speaker
         self.startTime = startTime
         self.endTime = endTime
-        self.confidence = confidence
+        self.confidence = max(0, min(1, confidence))
     }
 }
 

@@ -5,7 +5,10 @@ import Foundation
 /// Supports multiple backends (Voxtral, remote Whisper server) via a common
 /// JSON protocol. Audio is sent as binary frames, results arrive as JSON.
 ///
-/// Protocol (server→client):
+/// Thread safety: all mutable state is protected by `stateQueue` (serial).
+/// Public methods may be called from any thread.
+///
+/// Protocol (server->client):
 /// ```json
 /// { "type": "partial", "text": "Bonj", "confidence": 0.7 }
 /// { "type": "final",   "text": "Bonjour comment allez-vous", "confidence": 0.95 }
@@ -17,11 +20,11 @@ final class WebSocketSTTClient: StreamingTranscriberProvider {
     var onPartialResult: ((PartialTranscription) -> Void)?
     var onFinalResult: ((PartialTranscription) -> Void)?
 
-    // MARK: - State
+    // MARK: - State (protected by stateQueue)
 
     private(set) var connectionState: STTConnectionState = .disconnected
 
-    // MARK: - Private
+    // MARK: - Private (all access serialized on stateQueue)
 
     private var webSocketTask: URLSessionWebSocketTask?
     private var session: URLSession?
@@ -30,64 +33,80 @@ final class WebSocketSTTClient: StreamingTranscriberProvider {
     private let reconnectMaxAttempts = 3
     private var reconnectAttempt = 0
 
-    private let sendQueue = DispatchQueue(label: "com.voicescribe.ws-stt", qos: .userInteractive)
+    /// Serializes all mutable state access to prevent data races.
+    private let stateQueue = DispatchQueue(label: "com.voicescribe.ws-stt.state", qos: .userInteractive)
 
     // MARK: - Connect
 
     func connect(config: STTServerConfig) async throws {
-        self.config = config
-        guard let url = config.webSocketURL else {
-            connectionState = .error("URL invalide")
-            throw STTClientError.invalidURL
-        }
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            stateQueue.async { [weak self] in
+                guard let self else {
+                    continuation.resume(throwing: STTClientError.connectionFailed("Client deallocated"))
+                    return
+                }
 
-        connectionState = .connecting
+                self.config = config
+                guard let url = config.webSocketURL else {
+                    self.connectionState = .error("URL invalide")
+                    continuation.resume(throwing: STTClientError.invalidURL)
+                    return
+                }
 
-        let urlSession = URLSession(configuration: .default)
-        self.session = urlSession
+                self.connectionState = .connecting
 
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 10
+                let urlSession = URLSession(configuration: .default)
+                self.session = urlSession
 
-        // Send language/model config as query params or headers
-        if var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
-            components.queryItems = [
-                URLQueryItem(name: "language", value: config.language),
-                URLQueryItem(name: "model", value: config.model)
-            ]
-            if let configuredURL = components.url {
-                request.url = configuredURL
+                var request = URLRequest(url: url)
+                request.timeoutInterval = 10
+
+                if var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+                    components.queryItems = [
+                        URLQueryItem(name: "language", value: config.language),
+                        URLQueryItem(name: "model", value: config.model)
+                    ]
+                    if let configuredURL = components.url {
+                        request.url = configuredURL
+                    }
+                }
+
+                let task = urlSession.webSocketTask(with: request)
+                self.webSocketTask = task
+                task.resume()
+
+                self.connectionState = .connected
+                self.reconnectAttempt = 0
+
+                // Start receiving messages
+                self.receiveMessages()
+
+                continuation.resume()
             }
         }
-
-        let task = urlSession.webSocketTask(with: request)
-        self.webSocketTask = task
-        task.resume()
-
-        connectionState = .connected
-        reconnectAttempt = 0
-
-        // Start receiving messages
-        receiveMessages()
     }
 
     // MARK: - Disconnect
 
     func disconnect() {
-        webSocketTask?.cancel(with: .goingAway, reason: nil)
-        webSocketTask = nil
-        session?.invalidateAndCancel()
-        session = nil
-        connectionState = .disconnected
+        stateQueue.async { [weak self] in
+            guard let self else { return }
+            self.webSocketTask?.cancel(with: .goingAway, reason: nil)
+            self.webSocketTask = nil
+            self.session?.invalidateAndCancel()
+            self.session = nil
+            self.connectionState = .disconnected
+        }
     }
 
     // MARK: - Send Audio
 
     func sendAudio(samples: [Float], timestamp: TimeInterval) {
-        guard connectionState.isUsable, let task = webSocketTask else { return }
-        currentTimestamp = timestamp
+        stateQueue.async { [weak self] in
+            guard let self else { return }
+            guard self.connectionState.isUsable, let task = self.webSocketTask else { return }
+            self.currentTimestamp = timestamp
 
-        sendQueue.async {
             // Convert Float32 samples to raw bytes (little-endian)
             let data = samples.withUnsafeBufferPointer { ptr in
                 Data(buffer: ptr)
@@ -97,7 +116,7 @@ final class WebSocketSTTClient: StreamingTranscriberProvider {
             task.send(message) { [weak self] error in
                 if let error = error {
                     Log.audio.warning("WebSocket send error: \(error.localizedDescription)")
-                    Task { @MainActor in
+                    Task { @MainActor [weak self] in
                         self?.handleConnectionLoss()
                     }
                 }
@@ -108,19 +127,22 @@ final class WebSocketSTTClient: StreamingTranscriberProvider {
     // MARK: - Receive Loop
 
     private func receiveMessages() {
+        // Note: called from stateQueue — read webSocketTask safely
         webSocketTask?.receive { [weak self] result in
-            guard let self = self else { return }
+            guard let self else { return }
 
             switch result {
             case .success(let message):
                 self.handleMessage(message)
                 // Continue receiving
-                self.receiveMessages()
+                self.stateQueue.async { [weak self] in
+                    self?.receiveMessages()
+                }
 
             case .failure(let error):
                 Log.audio.warning("WebSocket receive error: \(error.localizedDescription)")
-                Task { @MainActor in
-                    self.handleConnectionLoss()
+                Task { @MainActor [weak self] in
+                    self?.handleConnectionLoss()
                 }
             }
         }
@@ -143,13 +165,18 @@ final class WebSocketSTTClient: StreamingTranscriberProvider {
               let text = json["text"] as? String else { return }
 
         let confidence = (json["confidence"] as? Double).map(Float.init) ?? 1.0
-        let backend: STTBackend = config?.model.contains("voxtral") == true ? .voxtralWebSocket : .whisperServer
+
+        // Read config safely
+        let backend: STTBackend = stateQueue.sync {
+            config?.model.contains("voxtral") == true ? .voxtralWebSocket : .whisperServer
+        }
+        let timestamp: TimeInterval = stateQueue.sync { currentTimestamp }
 
         let partial = PartialTranscription(
             text: text,
             isFinal: type == "final",
             confidence: confidence,
-            timestamp: currentTimestamp,
+            timestamp: timestamp,
             backend: backend
         )
 
@@ -163,22 +190,27 @@ final class WebSocketSTTClient: StreamingTranscriberProvider {
     // MARK: - Reconnection
 
     private func handleConnectionLoss() {
-        guard reconnectAttempt < reconnectMaxAttempts, let config = config else {
-            connectionState = .error("Connexion perdue")
-            return
-        }
+        stateQueue.async { [weak self] in
+            guard let self else { return }
+            guard self.reconnectAttempt < self.reconnectMaxAttempts, let config = self.config else {
+                self.connectionState = .error("Connexion perdue")
+                return
+            }
 
-        reconnectAttempt += 1
-        connectionState = .reconnecting(attempt: reconnectAttempt)
+            self.reconnectAttempt += 1
+            self.connectionState = .reconnecting(attempt: self.reconnectAttempt)
 
-        let delay = Double(1 << reconnectAttempt) // 2s, 4s, 8s
+            let delay = Double(1 << self.reconnectAttempt) // 2s, 4s, 8s
 
-        Task {
-            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-            do {
-                try await connect(config: config)
-            } catch {
-                handleConnectionLoss()
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                do {
+                    try await self?.connect(config: config)
+                } catch {
+                    Task { @MainActor [weak self] in
+                        self?.handleConnectionLoss()
+                    }
+                }
             }
         }
     }

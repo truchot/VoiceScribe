@@ -24,15 +24,23 @@ struct SemanticAnalysis {
 // MARK: - Semantic Sentiment (Value Object)
 
 /// Text-derived sentiment — complements prosodic analysis.
+/// Immutable value object: create a new instance to change values.
 struct SemanticSentiment: Equatable {
     /// Overall text polarity (-1.0 to 1.0)
-    var polarity: Float = 0.0
+    let polarity: Float
     /// Speaker certainty/conviction level (0 to 1)
-    var certainty: Float = 0.5
+    let certainty: Float
     /// Formality level (affects coaching tone suggestions)
-    var formality: Float = 0.5
+    let formality: Float
     /// Engagement with the conversation topic (0 to 1)
-    var engagement: Float = 0.5
+    let engagement: Float
+
+    init(polarity: Float = 0.0, certainty: Float = 0.5, formality: Float = 0.5, engagement: Float = 0.5) {
+        self.polarity = max(-1.0, min(1.0, polarity))
+        self.certainty = max(0, min(1, certainty))
+        self.formality = max(0, min(1, formality))
+        self.engagement = max(0, min(1, engagement))
+    }
 
     var isPositive: Bool { polarity > 0.2 }
     var isNegative: Bool { polarity < -0.2 }

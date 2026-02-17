@@ -98,7 +98,7 @@ final class CoachingPersistenceUseCase {
     /// Persist throttled coaching state. Called every ~500ms from the coaching pipeline.
     /// Only handles snapshots and tips — slots and alerts come via events.
     func persistPeriodic(
-        output: ConversationCoach.CoachingOutput,
+        output: CoachingOutput,
         elapsed: TimeInterval
     ) {
         guard let sessionId else { return }
@@ -111,7 +111,7 @@ final class CoachingPersistenceUseCase {
     /// Force-persist final snapshot and post-call report.
     /// Slots and alerts are already persisted via events — no flush needed for those.
     func flush(
-        output: ConversationCoach.CoachingOutput?,
+        output: CoachingOutput?,
         elapsed: TimeInterval,
         report: PostCallReport
     ) {
@@ -128,7 +128,7 @@ final class CoachingPersistenceUseCase {
     // MARK: - Private: Snapshot
 
     private func persistSnapshot(
-        output: ConversationCoach.CoachingOutput,
+        output: CoachingOutput,
         sessionId: UUID,
         elapsed: TimeInterval
     ) {
@@ -138,7 +138,7 @@ final class CoachingPersistenceUseCase {
     }
 
     private func persistSnapshotImmediate(
-        output: ConversationCoach.CoachingOutput,
+        output: CoachingOutput,
         sessionId: UUID,
         elapsed: TimeInterval
     ) {
@@ -160,7 +160,7 @@ final class CoachingPersistenceUseCase {
     // MARK: - Private: Tips
 
     private func persistTip(
-        output: ConversationCoach.CoachingOutput,
+        output: CoachingOutput,
         sessionId: UUID,
         elapsed: TimeInterval
     ) {

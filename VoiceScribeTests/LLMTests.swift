@@ -42,8 +42,7 @@ final class LLMConfigTests: XCTestCase {
 
     func testEquality() {
         XCTAssertEqual(LLMConfig.default, LLMConfig.default)
-        var modified = LLMConfig.default
-        modified.backend = .claudeAPI
+        let modified = LLMConfig(backend: .claudeAPI)
         XCTAssertNotEqual(LLMConfig.default, modified)
     }
 }

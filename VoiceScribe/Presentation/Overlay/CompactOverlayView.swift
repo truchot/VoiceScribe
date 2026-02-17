@@ -153,7 +153,7 @@ struct CompactOverlayView: View {
     
     // MARK: - Movement Rail
     
-    private func movementRail(output: ConversationCoach.CoachingOutput) -> some View {
+    private func movementRail(output: CoachingOutput) -> some View {
         HStack(spacing: 0) {
             ForEach(ConversationMovement.allCases, id: \.rawValue) { m in
                 let isCurrent = m == output.movement
@@ -180,7 +180,7 @@ struct CompactOverlayView: View {
     
     // MARK: - Core Section (focus + action)
     
-    private func coreSection(output: ConversationCoach.CoachingOutput) -> some View {
+    private func coreSection(output: CoachingOutput) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             // Movement name + fluidity
             HStack(spacing: 4) {
@@ -229,7 +229,7 @@ struct CompactOverlayView: View {
     
     // MARK: - Tip Strip (only urgent)
     
-    private func tipStrip(tip: ConversationCoach.ActiveTip) -> some View {
+    private func tipStrip(tip: ActiveTip) -> some View {
         HStack(alignment: .top, spacing: 4) {
             Image(systemName: tip.urgency == .action ? "bolt.fill" : "exclamationmark.triangle")
                 .font(.system(size: 9))
@@ -249,7 +249,7 @@ struct CompactOverlayView: View {
     
     // MARK: - Emotion Strip
     
-    private func emotionStrip(coaching: ConversationCoach.EmotionCoaching) -> some View {
+    private func emotionStrip(coaching: EmotionCoaching) -> some View {
         HStack(spacing: 4) {
             Text(coaching.emoji).font(.system(size: 11))
             Text(coaching.empathyPhrase)
@@ -263,7 +263,7 @@ struct CompactOverlayView: View {
     
     // MARK: - Transition Strip
     
-    private func transitionStrip(nudge: ConversationCoach.TransitionNudge) -> some View {
+    private func transitionStrip(nudge: TransitionNudge) -> some View {
         Button(action: { coaching.overrideMovement(nudge.target) }) {
             HStack(spacing: 4) {
                 Image(systemName: "arrow.right.circle.fill")
