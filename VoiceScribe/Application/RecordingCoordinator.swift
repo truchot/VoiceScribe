@@ -22,6 +22,7 @@ final class RecordingCoordinator {
     let transcription: TranscriptionStore
     let sentiment: SentimentStore
     let coaching: CoachingStore
+    let summary: SummaryStore
     
     // MARK: - Pipeline Components (protocol-based, all injected)
     
@@ -43,8 +44,14 @@ final class RecordingCoordinator {
     /// Creates a fresh transcriber pair with the given config.
     let makeTranscriber: (_ modelPath: String, _ language: String) -> TranscriberProvider
     
+    // MARK: - Phase 2 Components (protocol-based)
+
+    private var diarizer: DiarizationProvider
+    private var streamingSTT: StreamingTranscriberProvider?
+    private var semanticSentiment: SemanticSentimentProvider
+
     // MARK: - Infrastructure
-    
+
     let hotkeys = GlobalHotkeyManager()
     private var hybridSentiment: HybridSentimentProvider
     private let coachingPersistence = CoachingPersistenceUseCase()
@@ -70,11 +77,15 @@ final class RecordingCoordinator {
         transcription: TranscriptionStore,
         sentiment: SentimentStore,
         coaching: CoachingStore,
+        summary: SummaryStore = SummaryStore(),
         micVAD: VADProvider,
         systemVAD: VADProvider,
         sentimentProvider: SentimentProvider,
         coachEngine: CoachingProvider,
         hybridSentiment: HybridSentimentProvider,
+        diarizer: DiarizationProvider,
+        streamingSTT: StreamingTranscriberProvider? = nil,
+        semanticSentiment: SemanticSentimentProvider,
         makeVAD: @escaping (_ speechThreshold: Float) -> VADProvider,
         makeSentiment: @escaping (_ smoothingFactor: Float) -> SentimentProvider,
         makeTranscriber: @escaping (_ modelPath: String, _ language: String) -> TranscriberProvider
@@ -84,7 +95,8 @@ final class RecordingCoordinator {
         self.transcription = transcription
         self.sentiment = sentiment
         self.coaching = coaching
-        
+        self.summary = summary
+
         // All components injected — no defaults here (composition root is AppEnvironment)
         self.micVAD = micVAD
         self.systemVAD = systemVAD
@@ -93,52 +105,119 @@ final class RecordingCoordinator {
         self.sentimentProvider = sentimentProvider
         self.coachEngine = coachEngine
         self.hybridSentiment = hybridSentiment
+
+        // Phase 2: diarization, streaming STT, semantic sentiment
+        self.diarizer = diarizer
+        self.streamingSTT = streamingSTT
+        self.semanticSentiment = semanticSentiment
+
         self.makeVAD = makeVAD
         self.makeSentiment = makeSentiment
         self.makeTranscriber = makeTranscriber
-        
+
         // Wire domain event bus: coach engine → persistence subscriber
         self.coachEngine.eventBus = eventBus
         coachingPersistence.subscribe(to: eventBus)
-        
+
         // Wire coaching store to engine
         coaching.configure(coach: self.coachEngine)
-        
+
         setupHotkeys()
         setupCoachingCallbacks()
         setupSentimentCallbacks()
+        setupDiarizationCallbacks()
+        setupStreamingSTTCallbacks()
     }
     
-    // MARK: - Model Loading
-    
+    /// Maximum audio reconnection attempts before giving up.
+    private static let maxReconnectAttempts = 3
+    private var reconnectAttempts = 0
+
+    // MARK: - Model Loading (with fallback chain)
+
     func loadModel() async {
         recording.setLoading()
-        
-        guard let modelPath = findModelPath() else {
-            recording.setError("Modèle introuvable. Lancez ./setup.sh")
+
+        // Use the fallback chain: tries distil-large-v3 first, then falls back
+        let preferredSize = transcription.modelSize
+        guard let modelPath = WhisperTranscriber.bestAvailableModelPath(preferredSize: preferredSize)
+                ?? findModelPath() else {
+            recording.setError("Aucun modèle trouvé. Lancez ./setup.sh distil-large-v3")
             return
         }
-        
+
         let language = transcription.language
-        
+
         do {
             let t1 = makeTranscriber(modelPath, language)
             let t2 = makeTranscriber(modelPath, language)
-            
+
             try await Task.detached(priority: .userInitiated) {
                 try t1.loadModel()
                 try t2.loadModel()
             }.value
-            
+
             whisperMic = t1
             whisperSystem = t2
             recording.setReady()
-            
+
+            // Log the loaded model name
+            let modelName = (modelPath as NSString).lastPathComponent
+                .replacingOccurrences(of: "ggml-", with: "")
+                .replacingOccurrences(of: ".bin", with: "")
+            Log.transcription.info("Active model: \(modelName) (language: \(language))")
+
             await audio.checkPermissions()
             if globalHotkeysEnabled { hotkeys.enable() }
         } catch {
-            recording.setError(error.localizedDescription)
+            // If the preferred model fails, try the next one in the chain
+            Log.transcription.warning("Model load failed: \(error.localizedDescription). Attempting fallback...")
+            await loadModelWithFallback(excluding: modelPath)
         }
+    }
+
+    /// Try remaining models in the fallback chain after the primary fails.
+    private func loadModelWithFallback(excluding failedPath: String) async {
+        let language = transcription.language
+        let modelDirs = [
+            Bundle.main.bundleURL.deletingLastPathComponent().appendingPathComponent("Models").path,
+            FileManager.default.currentDirectoryPath + "/Models",
+            NSHomeDirectory() + "/Sites/VoiceScribe/Models",
+            NSHomeDirectory() + "/VoiceScribe/Models",
+            NSHomeDirectory() + "/Developer/VoiceScribe/Models",
+        ]
+
+        for size in WhisperTranscriber.modelFallbackChain {
+            let filename = "ggml-\(size).bin"
+            for dir in modelDirs {
+                let path = (dir as NSString).appendingPathComponent(filename)
+                guard path != failedPath, FileManager.default.fileExists(atPath: path) else { continue }
+
+                do {
+                    let t1 = makeTranscriber(path, language)
+                    let t2 = makeTranscriber(path, language)
+
+                    try await Task.detached(priority: .userInitiated) {
+                        try t1.loadModel()
+                        try t2.loadModel()
+                    }.value
+
+                    whisperMic = t1
+                    whisperSystem = t2
+                    recording.setReady()
+                    Log.transcription.info("Fallback model loaded: \(size)")
+
+                    await audio.checkPermissions()
+                    if globalHotkeysEnabled { hotkeys.enable() }
+                    return
+                } catch {
+                    Log.transcription.warning("Fallback \(size) also failed: \(error.localizedDescription)")
+                    continue
+                }
+            }
+        }
+
+        recording.setError("Aucun modèle n'a pu être chargé. Lancez ./setup.sh")
     }
     
     // MARK: - Recording Lifecycle
@@ -152,8 +231,11 @@ final class RecordingCoordinator {
         // Reset coaching pipeline
         sentiment.reset()
         coaching.reset()
+        summary.reset()
         coachEngine.reset()
         hybridSentiment.reset()
+        diarizer.reset()
+        semanticSentiment.reset()
         
         // Start persistence tracking for this session
         if let sessionId = transcription.currentSession?.id {
@@ -177,7 +259,8 @@ final class RecordingCoordinator {
         sentimentProvider = makeSentiment(Float(sentiment.sentimentSmoothing))
         setupSentimentCallbacks()
         
-        // Start mic capture
+        // Start mic capture (with reconnection resilience)
+        reconnectAttempts = 0
         audio.audioCapture.configure(AudioCaptureManager.Config(chunkDuration: 0.5))
         audio.audioCapture.onAudioChunk = { [weak self] samples, time in
             guard let self else { return }
@@ -187,7 +270,12 @@ final class RecordingCoordinator {
             let level = absSum / Float(samples.count)
             Task { @MainActor in self.audio.updateMicLevel(level * 8.0) }
         }
-        
+        audio.audioCapture.onCaptureInterrupted = { [weak self] in
+            Task { @MainActor in
+                self?.attemptMicReconnection()
+            }
+        }
+
         do {
             try audio.audioCapture.startCapturing()
         } catch {
@@ -200,6 +288,7 @@ final class RecordingCoordinator {
             audio.systemAudio.onAudioChunk = { [weak self] samples, time in
                 guard let self else { return }
                 self.systemVAD.process(samples: samples, timestamp: time)
+                self.diarizer.process(samples: samples, timestamp: time)
                 if self.sentiment.sentimentEnabled {
                     self.sentimentProvider.process(samples: samples, timestamp: time)
                 }
@@ -252,11 +341,26 @@ final class RecordingCoordinator {
             )
         }
         
+        // Disconnect streaming STT if active
+        streamingSTT?.disconnect()
+
+        // Auto-generate AI summary if enabled
+        if summary.autoSummaryEnabled, let session = transcription.currentSession {
+            let transcript = session.exportMarkdown()
+            let topics = semanticSentiment.recentTopics()
+            let finalReport = coaching.coachingEnabled
+                ? coachingQueue.sync { coachEngine.generateReport(elapsed: recording.currentElapsed) }
+                : nil
+            Task {
+                await summary.generateSummary(transcript: transcript, report: finalReport, topics: topics)
+            }
+        }
+
         transcription.finishSession()
         audio.resetLevels()
         recording.setStopped()
     }
-    
+
     func toggleRecording() async {
         switch recording.state {
         case .recording: await pauseRecording()
@@ -270,6 +374,9 @@ final class RecordingCoordinator {
         transcription.clearSession()
         sentiment.reset()
         coaching.reset()
+        summary.reset()
+        diarizer.reset()
+        semanticSentiment.reset()
     }
     
     // MARK: - VAD → Whisper → Stores
@@ -310,10 +417,14 @@ final class RecordingCoordinator {
                         )
                         self.transcription.addSegment(tagged)
                         
-                        // Feed text to hybrid sentiment (prospect speech only)
+                        // Feed text to hybrid sentiment + semantic analyzer
                         if speaker == .other {
                             self.hybridSentiment.feedText(
                                 seg.text, speaker: speaker, timestamp: seg.startTime
+                            )
+                            // Semantic analysis (deeper than pattern matching)
+                            let _ = self.semanticSentiment.analyze(
+                                text: seg.text, speaker: speaker, timestamp: seg.startTime
                             )
                         }
                     }
@@ -344,10 +455,15 @@ final class RecordingCoordinator {
                 // Always store raw prosodic features (for UI gauges)
                 self.sentiment.updateSentiment(emotion: emotion, features: features)
                 
-                // Merge prosody × text for enriched commercial-aware emotion
+                // 3-channel merge: prosody × text patterns × semantic
+                // Protocol now exposes merge(prosody:semantic:at:) — no downcast needed.
+                let semanticSnapshot: SemanticAnalysis? = self.semanticSentiment.recentTopics().isEmpty
+                    ? nil
+                    : self.semanticSentiment.analyze(
+                        text: "", speaker: .other, timestamp: features.timestamp
+                    )
                 let hybrid = self.hybridSentiment.merge(
-                    prosody: emotion,
-                    at: features.timestamp
+                    prosody: emotion, semantic: semanticSnapshot, at: features.timestamp
                 )
                 
                 // If text contributed meaningfully, use the hybrid result
@@ -403,9 +519,23 @@ final class RecordingCoordinator {
             
             self.coachingPersistence.persistPeriodic(output: output, elapsed: elapsed)
             
-            // Push result back to MainActor
+            // Push result back to MainActor + trigger suggestions
             Task { @MainActor [weak self] in
-                self?.coaching.updateAdvice(output)
+                guard let self else { return }
+                self.coaching.updateAdvice(output)
+
+                // Trigger LLM response suggestions
+                let recentText = recent.map(\.text).joined(separator: " ")
+                let movement = output.movement
+                let currentEmotion = self.sentiment.currentEmotion
+                let topics = self.semanticSentiment.recentTopics()
+                await self.summary.generateSuggestions(
+                    recentText: recentText,
+                    movement: movement,
+                    emotion: currentEmotion,
+                    topics: topics,
+                    elapsed: elapsed
+                )
             }
         }
     }
@@ -449,8 +579,88 @@ final class RecordingCoordinator {
         }
     }
     
+    // MARK: - Diarization Pipeline
+
+    private func setupDiarizationCallbacks() {
+        diarizer.onSpeakerChange = { [weak self] speaker in
+            Task { @MainActor in
+                guard let self else { return }
+                let balance = self.diarizer.speakerBalance()
+                self.transcription.updateSpeakerInfo(
+                    activeSpeakers: self.diarizer.currentSpeakers(),
+                    balance: balance
+                )
+            }
+        }
+    }
+
+    // MARK: - Streaming STT Pipeline
+
+    private func setupStreamingSTTCallbacks() {
+        streamingSTT?.onPartialResult = { [weak self] partial in
+            Task { @MainActor in
+                self?.transcription.setLiveText(partial.text, speaker: .other)
+            }
+        }
+        streamingSTT?.onFinalResult = { [weak self] partial in
+            Task { @MainActor in
+                guard let self else { return }
+                let segment = partial.toSegment(speaker: .other, endTime: partial.timestamp + 3.0)
+                self.transcription.addSegment(segment)
+                self.hybridSentiment.feedText(partial.text, speaker: .other, timestamp: partial.timestamp)
+                let _ = self.semanticSentiment.analyze(text: partial.text, speaker: .other, timestamp: partial.timestamp)
+                self.updateCoaching()
+            }
+        }
+    }
+
+    /// Connect to a streaming STT server (e.g. Voxtral).
+    func connectStreamingSTT(config: STTServerConfig) async throws {
+        guard let stt = streamingSTT else { return }
+        try await stt.connect(config: config)
+        Log.transcription.info("Streaming STT connected: \(config.model) @ \(config.host):\(config.port)")
+    }
+
+    /// Disconnect from the streaming STT server.
+    func disconnectStreamingSTT() {
+        streamingSTT?.disconnect()
+    }
+
+    // MARK: - Audio Reconnection
+
+    /// Attempt to reconnect the microphone after an interruption (e.g. device disconnected).
+    /// Retries up to `maxReconnectAttempts` with exponential backoff.
+    private func attemptMicReconnection() {
+        guard recording.state == .recording else { return }
+        guard reconnectAttempts < Self.maxReconnectAttempts else {
+            recording.setError("Microphone déconnecté. Reconnexion échouée après \(Self.maxReconnectAttempts) tentatives.")
+            return
+        }
+
+        reconnectAttempts += 1
+        let attempt = reconnectAttempts
+        let delay = Double(1 << attempt) // 2s, 4s, 8s exponential backoff
+
+        Log.audio.warning("Microphone interrompu. Tentative de reconnexion \(attempt)/\(Self.maxReconnectAttempts) dans \(delay)s...")
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard self.recording.state == .recording else { return }
+
+            do {
+                self.audio.audioCapture.stopCapturing()
+                try self.audio.audioCapture.startCapturing()
+                self.reconnectAttempts = 0
+                Log.audio.info("Microphone reconnecté avec succès")
+            } catch {
+                Log.audio.warning("Reconnexion échouée: \(error.localizedDescription)")
+                self.attemptMicReconnection()
+            }
+        }
+    }
+
     // MARK: - Hotkeys
-    
+
     private func setupHotkeys() {
         hotkeys.onToggleRecording = { [weak self] in
             Task { @MainActor in await self?.toggleRecording() }

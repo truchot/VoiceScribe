@@ -17,6 +17,7 @@ import SwiftUI
 ///   ├─ TranscriptionStore @Published: session, liveText, savedCount
 ///   ├─ SentimentStore     @Published: emotion, features, timeline
 ///   ├─ CoachingStore      @Published: output, movement, enabled
+///   ├─ SummaryStore       @Published: summary, suggestions, insights
 ///   └─ RecordingCoordinator (non-observable pipeline brain)
 /// ```
 @MainActor
@@ -29,8 +30,9 @@ final class AppEnvironment: ObservableObject {
     let transcription: TranscriptionStore
     let sentiment: SentimentStore
     let coaching: CoachingStore
+    let summary: SummaryStore
     let overlay: OverlayManager
-    
+
     // MARK: - Coordinator
     
     private(set) var coordinator: RecordingCoordinator!
@@ -43,8 +45,9 @@ final class AppEnvironment: ObservableObject {
         self.transcription = TranscriptionStore()
         self.sentiment = SentimentStore()
         self.coaching = CoachingStore()
+        self.summary = SummaryStore()
         self.overlay = OverlayManager()
-        
+
         // Composition root: all concrete types instantiated HERE, not in Coordinator
         coordinator = RecordingCoordinator(
             recording: recording,
@@ -52,11 +55,15 @@ final class AppEnvironment: ObservableObject {
             transcription: transcription,
             sentiment: sentiment,
             coaching: coaching,
+            summary: summary,
             micVAD: SileroVAD(),
             systemVAD: SileroVAD(),
             sentimentProvider: SentimentAnalyzer(),
             coachEngine: ConversationCoach(),
             hybridSentiment: HybridSentiment(),
+            diarizer: SpeakerDiarizer(),
+            streamingSTT: WebSocketSTTClient(),
+            semanticSentiment: SemanticSentimentAnalyzer(),
             makeVAD: { threshold in SileroVAD(config: .init(speechThreshold: threshold)) },
             makeSentiment: { smoothing in SentimentAnalyzer(config: .init(smoothingFactor: smoothing)) },
             makeTranscriber: { path, lang in WhisperTranscriber(config: .init(modelPath: path, language: lang)) }
@@ -95,8 +102,9 @@ final class AppEnvironment: ObservableObject {
         self.transcription = TranscriptionStore(persistence: persistence)
         self.sentiment = SentimentStore()
         self.coaching = CoachingStore()
+        self.summary = SummaryStore()
         self.overlay = OverlayManager()
-        
+
         self.coordinator = RecordingCoordinator(
             recording: recording,
             audio: audio,
@@ -138,5 +146,15 @@ final class AppEnvironment: ObservableObject {
     
     func toggleOverlay() {
         overlay.toggle()
+    }
+
+    func connectStreamingSTT(config: STTServerConfig = .default) async throws {
+        try await coordinator.connectStreamingSTT(config: config)
+        transcription.sttConnectionState = .connected
+    }
+
+    func disconnectStreamingSTT() {
+        coordinator.disconnectStreamingSTT()
+        transcription.sttConnectionState = .disconnected
     }
 }

@@ -20,10 +20,10 @@ final class SentimentStore: ObservableObject {
     @Published private(set) var commercialAlert: CommercialAlert?
     
     /// Recent text signals for coaching context
-    @Published private(set) var recentTextSignals: [TextSignalAnalyzer.DetectedSignal] = []
-    
+    @Published private(set) var recentTextSignals: [CommercialTextSignal] = []
+
     /// Source of the last emotion update (prosody, text override, blended)
-    @Published private(set) var dominantSource: HybridSentiment.HybridResult.Source = .prosody
+    @Published private(set) var dominantSource: HybridSentimentSource = .prosody
     
     // MARK: - Non-Published Timeline (no view observes this directly)
     
@@ -90,7 +90,7 @@ final class SentimentStore: ObservableObject {
     }
     
     /// Update with hybrid (prosody + text) result.
-    func updateHybrid(_ result: HybridSentiment.HybridResult) {
+    func updateHybrid(_ result: HybridSentimentResult) {
         currentEmotion = result.emotion
         latestSystemEmotion = result.emotion
         dominantSource = result.dominantSource

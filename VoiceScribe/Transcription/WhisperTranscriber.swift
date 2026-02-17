@@ -8,7 +8,7 @@ final class WhisperTranscriber {
     
     struct Config {
         var modelPath: String
-        var language: String = "fr"       // "fr", "en", "auto" for auto-detect
+        var language: String = "auto"     // "auto" for auto-detect, "fr", "en", etc.
         var translate: Bool = false        // translate to English
         var threads: Int = 4              // CPU threads (for non-Metal fallback)
         var speedUp: Bool = false         // 2x speed at lower quality

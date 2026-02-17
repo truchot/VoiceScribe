@@ -191,7 +191,7 @@ struct ActLabel: View {
 // MARK: - Focus Row
 
 struct FocusRow: View {
-    let output: ConversationCoach.CoachingOutput
+    let output: CoachingOutput
     
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
@@ -269,7 +269,7 @@ struct FocusRow: View {
 // MARK: - Action Row
 
 struct ActionRow: View {
-    let output: ConversationCoach.CoachingOutput
+    let output: CoachingOutput
     @Binding var showAlternatives: Bool
     
     var body: some View {
@@ -334,7 +334,7 @@ struct ActionRow: View {
 // MARK: - Tip Row
 
 struct TipRow: View {
-    let tip: ConversationCoach.ActiveTip
+    let tip: ActiveTip
     
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
@@ -391,7 +391,7 @@ struct TipRow: View {
 // MARK: - Emotion Row
 
 struct EmotionRow: View {
-    let coaching: ConversationCoach.EmotionCoaching
+    let coaching: EmotionCoaching
     
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
@@ -415,7 +415,7 @@ struct EmotionRow: View {
 // MARK: - Slot Status
 
 struct SlotStatusView: View {
-    let slots: [ConversationCoach.SlotStatus]
+    let slots: [SlotStatus]
     @Binding var show: Bool
     let readiness: Float
     
@@ -503,7 +503,7 @@ struct MiniBalance: View {
 // MARK: - Transition Row
 
 struct TransitionRow: View {
-    let nudge: ConversationCoach.TransitionNudge
+    let nudge: TransitionNudge
     let onAccept: () -> Void
     
     var body: some View {

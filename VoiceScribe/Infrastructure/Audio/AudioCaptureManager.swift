@@ -25,13 +25,17 @@ final class AudioCaptureManager: ObservableObject {
     @Published var error: String?
     
     // MARK: - Audio Chunk Callback
-    
+
     /// Called when a new audio chunk is ready for transcription.
     /// Provides PCM Float32 samples at 16kHz mono.
     var onAudioChunk: (([Float], TimeInterval) -> Void)?
-    
+
+    /// Called when audio capture is interrupted (e.g. microphone disconnected).
+    /// The coordinator should attempt reconnection when this fires.
+    var onCaptureInterrupted: (() -> Void)?
+
     // MARK: - Private Properties
-    
+
     private let engine = AVAudioEngine()
     private var config = Config()
     private var audioBuffer: [Float] = []
@@ -114,9 +118,37 @@ final class AudioCaptureManager: ObservableObject {
             }
         }
         
+        // Listen for audio interruptions (mic disconnect, Bluetooth switch, etc.)
+        NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self = self, self.isCapturing else { return }
+            guard let userInfo = notification.userInfo,
+                  let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+            if type == .began {
+                Log.audio.warning("Audio capture interrupted")
+                self.onCaptureInterrupted?()
+            }
+        }
+
+        // Also handle the AVAudioEngine configuration change (e.g. device unplug)
+        NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self, self.isCapturing else { return }
+            Log.audio.warning("Audio engine configuration changed (device change)")
+            self.onCaptureInterrupted?()
+        }
+
         engine.prepare()
         try engine.start()
-        
+
         DispatchQueue.main.async {
             self.isCapturing = true
             self.error = nil
@@ -125,7 +157,10 @@ final class AudioCaptureManager: ObservableObject {
     
     func stopCapturing() {
         guard isCapturing else { return }
-        
+
+        NotificationCenter.default.removeObserver(self, name: AVAudioSession.interruptionNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: .AVAudioEngineConfigurationChange, object: engine)
+
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
         

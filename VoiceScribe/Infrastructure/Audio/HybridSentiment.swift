@@ -77,87 +77,130 @@ final class HybridSentiment {
         }
     }
     
-    /// Merge prosodic emotion with accumulated text signals.
+    /// Merge prosodic emotion with accumulated text signals and optional semantic analysis.
     /// Call each time SentimentStore would update (e.g. every 500ms).
-    func merge(prosody: EmotionalState, at timestamp: TimeInterval) -> HybridResult {
+    func merge(prosody: EmotionalState, at timestamp: TimeInterval) -> HybridSentimentResult {
+        merge(prosody: prosody, semantic: nil, at: timestamp)
+    }
+
+    /// 3-channel merge: prosody + text patterns + semantic analysis.
+    func merge(prosody: EmotionalState, semantic: SemanticAnalysis?, at timestamp: TimeInterval) -> HybridSentimentResult {
         let textAgg = aggregateTextSignals(at: timestamp)
-        
+        let domainSignals = textAgg.signals.map { $0.toDomainSignal() }
+
         // If no significant text, return prosody with metadata
         guard textAgg.confidence >= config.textMinConfidence else {
-            return HybridResult(
+            return HybridSentimentResult(
                 emotion: prosody,
                 textSignals: [],
                 dominantSource: .prosody,
                 commercialAlert: nil
             )
         }
-        
+
         // Build merged emotion
         var merged = prosody
         let tw = effectiveTextWeight(textConfidence: textAgg.confidence, signalStrength: textAgg.maxStrength)
         let pw = 1.0 - tw
-        
+
         // ── Rule 1: Strong text objection OVERRIDES prosodic valence ──
         if textAgg.maxStrength >= config.textOverrideThreshold &&
            textAgg.commercialValence < -0.3 {
             merged.valence = textAgg.commercialValence
-            merged.dominance = min(prosody.dominance, -0.1) // Objection = not submissive, but negative
-            // Boost confidence since we have strong signal
+            merged.dominance = min(prosody.dominance, -0.1)
             merged.confidence = max(prosody.confidence, 0.7)
-            
-            return HybridResult(
+
+            return HybridSentimentResult(
                 emotion: merged,
-                textSignals: textAgg.signals,
+                textSignals: domainSignals,
                 dominantSource: .textOverride,
                 commercialAlert: buildAlert(signals: textAgg.signals, valence: textAgg.commercialValence)
             )
         }
-        
+
         // ── Rule 2: Agreement = amplify ──
         let sameDirection = (prosody.valence > 0 && textAgg.commercialValence > 0) ||
                             (prosody.valence < 0 && textAgg.commercialValence < 0)
-        
+
         if sameDirection {
-            // Both agree → strengthen the signal
             merged.valence = prosody.valence * pw + textAgg.commercialValence * tw
-            // Amplify slightly when both agree
             if abs(merged.valence) < abs(prosody.valence) + abs(textAgg.commercialValence) / 2 {
                 merged.valence *= 1.15
             }
             merged.valence = max(-1, min(1, merged.valence))
             merged.confidence = min(1.0, prosody.confidence + 0.15)
-            
-            return HybridResult(
+
+            return HybridSentimentResult(
                 emotion: merged,
-                textSignals: textAgg.signals,
+                textSignals: domainSignals,
                 dominantSource: .agreement,
                 commercialAlert: buildAlert(signals: textAgg.signals, valence: textAgg.commercialValence)
             )
         }
-        
+
         // ── Rule 3: Conflict = weighted merge ──
         merged.valence = prosody.valence * pw + textAgg.commercialValence * tw
         merged.valence = max(-1, min(1, merged.valence))
-        
-        // Text affects dominance for hesitation markers
+
         if textAgg.signals.contains(where: { $0.type == .hesitation }) {
             merged.dominance = min(prosody.dominance, prosody.dominance * pw + (-0.4) * tw)
         }
-        
-        // Buying signals boost dominance
         if textAgg.signals.contains(where: { $0.type == .buyingSignal }) {
             merged.dominance = max(prosody.dominance, prosody.dominance * pw + 0.3 * tw)
         }
-        
+
         merged.confidence = max(prosody.confidence, textAgg.confidence)
-        
-        return HybridResult(
+
+        // ── Semantic enrichment (3rd channel) ──
+        if let semantic, semantic.confidence > 0.3 {
+            merged = enrichWithSemantic(merged, semantic: semantic)
+        }
+
+        return HybridSentimentResult(
             emotion: merged,
-            textSignals: textAgg.signals,
+            textSignals: domainSignals,
             dominantSource: .blended,
             commercialAlert: textAgg.maxStrength > 0.5 ?
                 buildAlert(signals: textAgg.signals, valence: textAgg.commercialValence) : nil
         )
+    }
+
+    /// Enrich a merged emotion with semantic text analysis.
+    /// Semantic adjusts certainty→dominance and engagement→arousal.
+    private func enrichWithSemantic(_ emotion: EmotionalState, semantic: SemanticAnalysis) -> EmotionalState {
+        var enriched = emotion
+        let sw: Float = 0.25 // Semantic weight (light touch — supplements rather than overrides)
+        let pw: Float = 1.0 - sw
+
+        // Semantic polarity contributes to valence
+        enriched.valence = enriched.valence * pw + semantic.sentiment.polarity * sw
+        enriched.valence = max(-1, min(1, enriched.valence))
+
+        // Certainty maps to dominance
+        let certDelta = (semantic.sentiment.certainty - 0.5) * 2.0 // -1..1 range
+        enriched.dominance = enriched.dominance * pw + certDelta * 0.3 * sw
+        enriched.dominance = max(-1, min(1, enriched.dominance))
+
+        // Engagement maps to arousal
+        let engDelta = (semantic.sentiment.engagement - 0.5) * 2.0
+        enriched.arousal = enriched.arousal * pw + engDelta * 0.2 * sw
+        enriched.arousal = max(-1, min(1, enriched.arousal))
+
+        // Intent-based adjustments
+        switch semantic.intent {
+        case .objecting:
+            enriched.valence = min(enriched.valence, enriched.valence - 0.1)
+        case .committing:
+            enriched.valence = max(enriched.valence, enriched.valence + 0.1)
+            enriched.dominance = max(enriched.dominance, 0.2)
+        case .deflecting:
+            enriched.dominance = min(enriched.dominance, enriched.dominance - 0.1)
+        default: break
+        }
+
+        enriched.confidence = min(1.0, enriched.confidence + semantic.confidence * 0.1)
+
+        return enriched
     }
     
     /// Reset state (new session).
@@ -167,30 +210,10 @@ final class HybridSentiment {
         lastSignificantTimestamp = 0
     }
     
-    // MARK: - Result
-    
-    struct HybridResult {
-        /// Merged emotional state (ready for SentimentStore)
-        let emotion: EmotionalState
-        
-        /// Text signals that contributed (for coaching)
-        let textSignals: [TextSignalAnalyzer.DetectedSignal]
-        
-        /// Which source dominated this result
-        let dominantSource: Source
-        
-        /// Commercial alert (if strong text signal detected)
-        let commercialAlert: CommercialAlert?
-        
-        enum Source {
-            case prosody       // Text was insignificant
-            case textOverride  // Text was strong objection/signal overriding prosody
-            case agreement     // Both prosody and text aligned
-            case blended       // Weighted combination
-        }
-    }
-    
-    // CommercialAlert is now a Domain type (Domain/Models/CommercialAlert.swift)
+    // HybridResult and Source are now Domain types:
+    // - HybridSentimentResult (Domain/Models/HybridSentimentResult.swift)
+    // - HybridSentimentSource
+    // - CommercialTextSignal
     
     // MARK: - Internal
     
@@ -294,6 +317,32 @@ final class HybridSentiment {
             category: strongest.category.rawValue,
             message: message,
             strength: strongest.strength
+        )
+    }
+}
+
+// MARK: - Infrastructure → Domain Signal Mapping
+
+extension TextSignalAnalyzer.DetectedSignal {
+    /// Convert to domain-level signal type for cross-layer communication.
+    func toDomainSignal() -> CommercialTextSignal {
+        let kind: CommercialTextSignal.SignalKind
+        switch type {
+        case .objection:         kind = .objection
+        case .buyingSignal:      kind = .buyingSignal
+        case .authorityFlag:     kind = .authorityFlag
+        case .competitorMention: kind = .competitorMention
+        case .urgencySignal:     kind = .urgencySignal
+        case .hesitation:        kind = .hesitation
+        case .engagement:        kind = .engagement
+        case .disengagement:     kind = .disengagement
+        }
+        return CommercialTextSignal(
+            type: kind,
+            category: category.rawValue,
+            strength: strength,
+            matchedPattern: matchedPattern,
+            textExcerpt: textExcerpt
         )
     }
 }

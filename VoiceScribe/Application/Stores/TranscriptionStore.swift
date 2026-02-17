@@ -23,8 +23,8 @@ final class TranscriptionStore: ObservableObject {
     
     // MARK: - Settings
     
-    @AppStorage("whisperLanguage") var language: String = "fr"
-    @AppStorage("modelSize") var modelSize: String = "large-v3-turbo"
+    @AppStorage("whisperLanguage") var language: String = "auto"
+    @AppStorage("modelSize") var modelSize: String = "distil-large-v3"
     
     // MARK: - Dependencies
     
@@ -102,6 +102,26 @@ final class TranscriptionStore: ObservableObject {
         case .me, .unknown: isInferringMic = active
         case .other: isInferringSystem = active
         }
+    }
+
+    // MARK: - Speaker Diarization Info
+
+    @Published var activeSpeakers: [SpeakerProfile] = []
+    @Published var speakerBalance: SpeakerBalance = .empty
+
+    /// Update speaker information from the diarization pipeline.
+    func updateSpeakerInfo(activeSpeakers: [SpeakerProfile], balance: SpeakerBalance) {
+        self.activeSpeakers = activeSpeakers
+        self.speakerBalance = balance
+    }
+
+    // MARK: - STT Backend State
+
+    @Published var sttConnectionState: STTConnectionState = .disconnected
+    @AppStorage("sttBackend") var sttBackend: String = STTBackend.whisperLocal.rawValue
+
+    var activeSTTBackend: STTBackend {
+        STTBackend(rawValue: sttBackend) ?? .whisperLocal
     }
     
     // MARK: - Persistence

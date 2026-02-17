@@ -11,22 +11,45 @@ struct CoachingAnalyticsView: View {
     @State private var qualTrend: [(sessionId: UUID, date: Date, score: Float)] = []
     @State private var coachingStats: SessionPersistence.CoachingStatsSummary?
     @State private var selectedSessionReport: (id: UUID, title: String, report: String)?
-    
+
+    // Phase 3: AI insights + semantic search
+    @State private var insights: [ConversationInsight] = []
+    @State private var searchQuery = ""
+    @State private var searchResults: [SemanticSearchResult] = []
+    private let analyticsEngine = AnalyticsEngine()
+
+    // Preloaded data to avoid DB queries in view body
+    @State private var sessionSnapshots: [UUID: Int] = [:]
+    @State private var sessionAlerts: [UUID: Int] = [:]
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
                 headerSection
-                
+
+                // Semantic search bar
+                searchSection
+
+                // AI-generated insights
+                if !insights.isEmpty {
+                    insightsSection
+                }
+
                 if let stats = coachingStats, stats.totalRows > 0 {
                     HStack(spacing: 12) {
                         movementSection
                         objectionSection
                     }
-                    
+
                     qualificationSection
                     reportBrowserSection
-                } else {
+                } else if insights.isEmpty && searchResults.isEmpty {
                     emptyState
+                }
+
+                // Search results
+                if !searchResults.isEmpty {
+                    searchResultsSection
                 }
             }
             .padding(16)
@@ -215,16 +238,12 @@ struct CoachingAnalyticsView: View {
                             }
                             Spacer()
                             
-                            let snapshots = SessionPersistence.shared.loadSnapshots(sessionId: entry.sessionId)
-                            let alerts = SessionPersistence.shared.loadAlerts(sessionId: entry.sessionId)
-                            
                             HStack(spacing: 6) {
-                                if !snapshots.isEmpty {
-                                    let movements = Set(snapshots.map(\.movement)).count
-                                    Text("\(movements) mvt").font(.system(size: 8, design: .monospaced)).foregroundStyle(.blue)
+                                if let movementCount = sessionSnapshots[entry.sessionId], movementCount > 0 {
+                                    Text("\(movementCount) mvt").font(.system(size: 8, design: .monospaced)).foregroundStyle(.blue)
                                 }
-                                if !alerts.isEmpty {
-                                    Text("\(alerts.count) ⚠️").font(.system(size: 8, design: .monospaced)).foregroundStyle(.orange)
+                                if let alertCount = sessionAlerts[entry.sessionId], alertCount > 0 {
+                                    Text("\(alertCount) ⚠️").font(.system(size: 8, design: .monospaced)).foregroundStyle(.orange)
                                 }
                             }
                             
@@ -281,10 +300,10 @@ struct CoachingAnalyticsView: View {
             // Movement timeline
             let timeline = SessionPersistence.shared.reconstructTimeline(sessionId: sessionId)
             if !timeline.isEmpty {
+                let totalDur = timeline.map { $0.end - $0.start }.reduce(0, +)
                 Text("Timeline").font(.system(size: 9)).fontWeight(.semibold).foregroundStyle(.secondary)
                 HStack(spacing: 1) {
                     ForEach(Array(timeline.enumerated()), id: \.offset) { _, entry in
-                        let totalDur = timeline.map { $0.end - $0.start }.reduce(0, +)
                         let ratio = totalDur > 0 ? CGFloat((entry.end - entry.start) / totalDur) : 0
                         
                         VStack(spacing: 1) {
@@ -303,14 +322,126 @@ struct CoachingAnalyticsView: View {
         .transition(.opacity)
     }
     
+    // MARK: - Search Section
+
+    private var searchSection: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+
+            TextField("Rechercher dans les sessions...", text: $searchQuery)
+                .textFieldStyle(.plain)
+                .font(.caption)
+                .onSubmit { performSearch() }
+                .onChange(of: searchQuery) { _, newValue in
+                    if newValue.isEmpty { searchResults = [] }
+                }
+
+            if !searchQuery.isEmpty {
+                Button(action: {
+                    searchQuery = ""
+                    searchResults = []
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(8)
+        .background(Color(.controlBackgroundColor).opacity(0.5))
+        .cornerRadius(6)
+    }
+
+    // MARK: - Insights Section
+
+    private var insightsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Insights IA", systemImage: "lightbulb.fill")
+                .font(.caption).fontWeight(.semibold).foregroundStyle(.secondary)
+
+            ForEach(Array(insights.enumerated()), id: \.offset) { _, insight in
+                InsightRow(insight: insight)
+            }
+        }
+        .padding(12)
+        .background(Color(.controlBackgroundColor).opacity(0.5))
+        .cornerRadius(8)
+    }
+
+    // MARK: - Search Results Section
+
+    private var searchResultsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Résultats (\(searchResults.count))", systemImage: "doc.text.magnifyingglass")
+                .font(.caption).fontWeight(.semibold).foregroundStyle(.secondary)
+
+            ForEach(Array(searchResults.prefix(10).enumerated()), id: \.offset) { _, result in
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(result.sessionTitle)
+                            .font(.system(size: 10, weight: .medium))
+
+                        Spacer()
+
+                        Text("\(Int(result.relevanceScore * 100))%")
+                            .font(.system(size: 8, design: .monospaced))
+                            .foregroundStyle(.secondary)
+
+                        Text(result.timestamp.formatted(.dateTime.month(.abbreviated).day()))
+                            .font(.system(size: 8))
+                            .foregroundStyle(.quaternary)
+                    }
+
+                    Text(result.context)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                .padding(6)
+                .background(Color.accentColor.opacity(0.03))
+                .cornerRadius(4)
+            }
+        }
+        .padding(12)
+        .background(Color(.controlBackgroundColor).opacity(0.5))
+        .cornerRadius(8)
+    }
+
     // MARK: - Data Loading
-    
+
     private func loadData() {
         let p = SessionPersistence.shared
         movementStats = p.movementStats()
         objectionStats = p.objectionStats()
         qualTrend = p.qualificationTrend()
         coachingStats = p.coachingStats()
+
+        // Preload per-session data to avoid DB queries in view body
+        var snaps: [UUID: Int] = [:]
+        var alerts: [UUID: Int] = [:]
+        for entry in qualTrend {
+            let s = p.loadSnapshots(sessionId: entry.sessionId)
+            snaps[entry.sessionId] = Set(s.map(\.movement)).count
+            alerts[entry.sessionId] = p.loadAlerts(sessionId: entry.sessionId).count
+        }
+        sessionSnapshots = snaps
+        sessionAlerts = alerts
+
+        // Load AI insights
+        analyticsEngine.refresh()
+        insights = analyticsEngine.generateInsights()
+    }
+
+    private func performSearch() {
+        guard !searchQuery.isEmpty else {
+            searchResults = []
+            return
+        }
+        analyticsEngine.refresh()
+        searchResults = analyticsEngine.semanticSearch(query: searchQuery)
     }
     
     private func loadReport(_ sessionId: UUID, date: Date) {
@@ -377,6 +508,79 @@ struct CoachingAnalyticsView: View {
         case "trust": return "Confiance"
         default: return category.capitalized
         }
+    }
+}
+
+// MARK: - Insight Row
+
+struct InsightRow: View {
+    let insight: ConversationInsight
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: categoryIcon)
+                .font(.system(size: 10))
+                .foregroundStyle(categoryColor)
+                .frame(width: 14)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text(insight.title)
+                        .font(.system(size: 10, weight: .medium))
+
+                    Spacer()
+
+                    impactBadge
+                }
+
+                Text(insight.description)
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("\(insight.dataPoints) données")
+                    .font(.system(size: 7))
+                    .foregroundStyle(.quaternary)
+            }
+        }
+        .padding(6)
+        .background(categoryColor.opacity(0.04))
+        .cornerRadius(4)
+    }
+
+    private var categoryIcon: String {
+        switch insight.category {
+        case .strength: return "star.fill"
+        case .improvement: return "arrow.up.right"
+        case .risk: return "exclamationmark.triangle.fill"
+        case .pattern: return "repeat"
+        }
+    }
+
+    private var categoryColor: Color {
+        switch insight.category {
+        case .strength: return .green
+        case .improvement: return .blue
+        case .risk: return .red
+        case .pattern: return .purple
+        }
+    }
+
+    private var impactBadge: some View {
+        let (label, color): (String, Color) = {
+            switch insight.impact {
+            case .high: return ("Fort", .red)
+            case .medium: return ("Moyen", .orange)
+            case .low: return ("Faible", .secondary)
+            }
+        }()
+        return Text(label)
+            .font(.system(size: 7, weight: .bold))
+            .padding(.horizontal, 4).padding(.vertical, 1)
+            .background(color.opacity(0.15))
+            .foregroundStyle(color)
+            .clipShape(Capsule())
     }
 }
 
