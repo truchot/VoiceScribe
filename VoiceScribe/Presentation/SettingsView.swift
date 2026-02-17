@@ -8,6 +8,7 @@ struct SettingsView: View {
     @EnvironmentObject var sentiment: SentimentStore
     @EnvironmentObject var overlay: OverlayManager
     @EnvironmentObject var transcription: TranscriptionStore
+    @EnvironmentObject var summary: SummaryStore
 
     @AppStorage("whisperLanguage") private var language = "auto"
     @AppStorage("modelSize") private var modelSize = "distil-large-v3"
@@ -22,6 +23,7 @@ struct SettingsView: View {
         TabView {
             generalTab.tabItem { Label("Général", systemImage: "gear") }
             coachingTab.tabItem { Label("Coaching", systemImage: "brain.head.profile") }
+            llmTab.tabItem { Label("IA", systemImage: "sparkles") }
             analyticsTab.tabItem { Label("Analytics", systemImage: "chart.bar.xaxis") }
             frameworkTab.tabItem { Label("Framework", systemImage: "list.bullet.indent") }
             audioTab.tabItem { Label("Audio", systemImage: "waveform") }
@@ -111,8 +113,45 @@ struct SettingsView: View {
         }.formStyle(.grouped)
     }
     
+    // MARK: - LLM / IA
+
+    var llmTab: some View {
+        Form {
+            Section("Backend IA") {
+                Picker("Moteur", selection: $summary.llmBackendRaw) {
+                    Text("Local (template)").tag(LLMBackend.local.rawValue)
+                    Text("Claude API (Anthropic)").tag(LLMBackend.claudeAPI.rawValue)
+                    Text("OpenAI API (GPT-4)").tag(LLMBackend.openAIAPI.rawValue)
+                }
+                if summary.llmBackend != .local {
+                    SecureField("Clé API", text: $summary.apiKey)
+                    if summary.apiKey.isEmpty {
+                        Text("Sans clé API, le moteur local sera utilisé en fallback.")
+                            .font(.caption).foregroundStyle(.orange)
+                    }
+                }
+            }
+            Section("Résumé automatique") {
+                Toggle("Générer un résumé après chaque appel", isOn: $summary.autoSummaryEnabled)
+                Text("Un résumé structuré est généré automatiquement à la fin de chaque session : points clés, actions, feedback coaching.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Suggestions en temps réel") {
+                Toggle("Suggestions IA pendant l'appel", isOn: $summary.suggestionsEnabled)
+                Text("Le moteur IA propose des réponses contextuelles pendant la conversation (gestion d'objection, questions à poser, opportunités de closing).")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Latence") {
+                latencyRow("Résumé local", "~200ms", .green)
+                latencyRow("Suggestions locales", "~50ms", .green)
+                latencyRow("Résumé API", "~3-5s", .orange)
+                latencyRow("Suggestions API", "~1-2s", .orange)
+            }
+        }.formStyle(.grouped)
+    }
+
     // MARK: - Analytics
-    
+
     var analyticsTab: some View {
         CoachingAnalyticsView()
     }
@@ -289,6 +328,7 @@ struct SettingsView: View {
                 FeaturePill(text: "Multi-STT", color: .purple)
                 FeaturePill(text: "Diarisation", color: .green)
                 FeaturePill(text: "Sémantique", color: .red)
+                FeaturePill(text: "IA / LLM", color: .indigo)
                 FeaturePill(text: "Overlay", color: .cyan)
                 FeaturePill(text: "100% local", color: .orange)
             }
@@ -301,7 +341,9 @@ struct SettingsView: View {
                 Label("Mémoire conversationnelle cross-mouvement", systemImage: "memorychip")
                 Label("Overlay compact toujours visible (⌥⇧O)", systemImage: "pip.enter")
                 Label("Rapport post-call avec scores", systemImage: "doc.text")
-                Label("Aucune donnée envoyée", systemImage: "lock.shield")
+                Label("Résumé IA auto + suggestions temps réel", systemImage: "sparkles")
+                Label("Analytics cross-session + recherche sémantique", systemImage: "chart.bar.xaxis")
+                Label("Aucune donnée envoyée (mode local)", systemImage: "lock.shield")
             }.font(.caption).foregroundStyle(.secondary)
             Spacer()
         }.frame(maxWidth: .infinity)

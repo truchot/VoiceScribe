@@ -22,6 +22,7 @@ final class RecordingCoordinator {
     let transcription: TranscriptionStore
     let sentiment: SentimentStore
     let coaching: CoachingStore
+    let summary: SummaryStore
     
     // MARK: - Pipeline Components (protocol-based, all injected)
     
@@ -76,6 +77,7 @@ final class RecordingCoordinator {
         transcription: TranscriptionStore,
         sentiment: SentimentStore,
         coaching: CoachingStore,
+        summary: SummaryStore = SummaryStore(),
         micVAD: VADProvider,
         systemVAD: VADProvider,
         sentimentProvider: SentimentProvider,
@@ -93,6 +95,7 @@ final class RecordingCoordinator {
         self.transcription = transcription
         self.sentiment = sentiment
         self.coaching = coaching
+        self.summary = summary
 
         // All components injected — no defaults here (composition root is AppEnvironment)
         self.micVAD = micVAD
@@ -228,6 +231,7 @@ final class RecordingCoordinator {
         // Reset coaching pipeline
         sentiment.reset()
         coaching.reset()
+        summary.reset()
         coachEngine.reset()
         hybridSentiment.reset()
         diarizer.reset()
@@ -340,6 +344,18 @@ final class RecordingCoordinator {
         // Disconnect streaming STT if active
         streamingSTT?.disconnect()
 
+        // Auto-generate AI summary if enabled
+        if summary.autoSummaryEnabled, let session = transcription.currentSession {
+            let transcript = session.exportMarkdown()
+            let topics = semanticSentiment.recentTopics()
+            let finalReport = coaching.coachingEnabled
+                ? coachingQueue.sync { coachEngine.generateReport(elapsed: recording.currentElapsed) }
+                : nil
+            Task {
+                await summary.generateSummary(transcript: transcript, report: finalReport, topics: topics)
+            }
+        }
+
         transcription.finishSession()
         audio.resetLevels()
         recording.setStopped()
@@ -358,6 +374,7 @@ final class RecordingCoordinator {
         transcription.clearSession()
         sentiment.reset()
         coaching.reset()
+        summary.reset()
         diarizer.reset()
         semanticSentiment.reset()
     }
@@ -504,9 +521,23 @@ final class RecordingCoordinator {
             
             self.coachingPersistence.persistPeriodic(output: output, elapsed: elapsed)
             
-            // Push result back to MainActor
+            // Push result back to MainActor + trigger suggestions
             Task { @MainActor [weak self] in
-                self?.coaching.updateAdvice(output)
+                guard let self else { return }
+                self.coaching.updateAdvice(output)
+
+                // Trigger LLM response suggestions
+                let recentText = recent.map(\.text).joined(separator: " ")
+                let movement = output.movement
+                let currentEmotion = self.sentiment.currentEmotion
+                let topics = self.semanticSentiment.recentTopics()
+                await self.summary.generateSuggestions(
+                    recentText: recentText,
+                    movement: movement,
+                    emotion: currentEmotion,
+                    topics: topics,
+                    elapsed: elapsed
+                )
             }
         }
     }

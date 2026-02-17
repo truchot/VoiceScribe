@@ -18,6 +18,7 @@ struct ContentView: View {
     @EnvironmentObject var audio: AudioStore
     @EnvironmentObject var sentiment: SentimentStore
     @EnvironmentObject var coaching: CoachingStore
+    @EnvironmentObject var summary: SummaryStore
     @State private var showHistory = false
     
     var body: some View {
@@ -40,6 +41,13 @@ struct ContentView: View {
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
                         Divider()
+
+                        // AI response suggestions (below coaching panel)
+                        if summary.suggestionsEnabled {
+                            SuggestionPanelView()
+                                .padding(.horizontal, 8)
+                                .padding(.bottom, 4)
+                        }
                     }
                     
                     // Sentiment mini-bar (when coaching is off but sentiment is on)
@@ -52,10 +60,19 @@ struct ContentView: View {
                     }
                     
                     TranscriptionView()
+
+                    // Post-session AI summary (visible when not recording)
+                    if !recording.state.isActive {
+                        if summary.currentSummary != nil || summary.isGeneratingSummary || summary.summaryError != nil {
+                            SessionSummaryView()
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                        }
+                    }
                 } else {
                     ModelLoadingView()
                 }
-                
+
                 Divider()
                 ControlBar()
             }

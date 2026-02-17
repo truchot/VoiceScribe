@@ -184,6 +184,49 @@ protocol SemanticSentimentProvider: AnyObject {
 
 // Conformances are in Application/ProtocolConformances.swift
 
+// MARK: - LLM Provider Protocol
+
+/// Abstracts LLM text generation for summaries and suggestions.
+/// Implementations: LocalLLMProvider (template-based), APILLMProvider (Claude/OpenAI)
+protocol LLMProvider: AnyObject {
+
+    /// Generate text from a prompt.
+    func generate(prompt: String, config: LLMConfig) async throws -> LLMResponse
+
+    /// Generate a post-session summary from conversation data.
+    func summarize(
+        transcript: String,
+        report: PostCallReport?,
+        topics: [DetectedTopic],
+        config: LLMConfig
+    ) async throws -> SessionSummary
+
+    /// Generate response suggestions based on current conversation context.
+    func suggestResponse(
+        recentText: String,
+        movement: ConversationMovement,
+        emotion: EmotionalState,
+        topics: [DetectedTopic],
+        config: LLMConfig
+    ) async throws -> [ResponseSuggestion]
+}
+
+// MARK: - Analytics Provider Protocol
+
+/// Abstracts cross-session analytics and semantic search.
+/// Implementations: AnalyticsEngine
+protocol AnalyticsProvider: AnyObject {
+
+    /// Generate insights from cross-session data.
+    func generateInsights() -> [ConversationInsight]
+
+    /// Semantic search across all sessions.
+    func semanticSearch(query: String) -> [SemanticSearchResult]
+
+    /// Refresh analytics data from persistence.
+    func refresh()
+}
+
 // MARK: - Hybrid Sentiment Provider Protocol
 
 /// Abstracts text × prosody sentiment merging.

@@ -40,3 +40,12 @@ extension WebSocketSTTClient: StreamingTranscriberProvider {}
 // MARK: - SemanticSentimentAnalyzer → SemanticSentimentProvider
 // All method signatures match exactly.
 extension SemanticSentimentAnalyzer: SemanticSentimentProvider {}
+
+// MARK: - LocalLLMProvider → LLMProvider
+extension LocalLLMProvider: LLMProvider {}
+
+// MARK: - APILLMProvider → LLMProvider
+extension APILLMProvider: LLMProvider {}
+
+// MARK: - AnalyticsEngine → AnalyticsProvider
+extension AnalyticsEngine: AnalyticsProvider {}

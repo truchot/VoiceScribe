@@ -15,6 +15,7 @@ struct VoiceScribeApp: App {
                 .environmentObject(env.transcription)
                 .environmentObject(env.sentiment)
                 .environmentObject(env.coaching)
+                .environmentObject(env.summary)
                 .environmentObject(env.overlay)
         }
         .windowStyle(.hiddenTitleBar)
@@ -29,6 +30,7 @@ struct VoiceScribeApp: App {
                 .environmentObject(env.transcription)
                 .environmentObject(env.sentiment)
                 .environmentObject(env.coaching)
+                .environmentObject(env.summary)
                 .environmentObject(env.overlay)
         }
         
@@ -40,6 +42,7 @@ struct VoiceScribeApp: App {
                 .environmentObject(env.transcription)
                 .environmentObject(env.sentiment)
                 .environmentObject(env.coaching)
+                .environmentObject(env.summary)
                 .environmentObject(env.overlay)
         }
     }

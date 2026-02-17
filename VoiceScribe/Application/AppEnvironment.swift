@@ -17,6 +17,7 @@ import SwiftUI
 ///   ├─ TranscriptionStore @Published: session, liveText, savedCount
 ///   ├─ SentimentStore     @Published: emotion, features, timeline
 ///   ├─ CoachingStore      @Published: output, movement, enabled
+///   ├─ SummaryStore       @Published: summary, suggestions, insights
 ///   └─ RecordingCoordinator (non-observable pipeline brain)
 /// ```
 @MainActor
@@ -29,8 +30,9 @@ final class AppEnvironment: ObservableObject {
     let transcription: TranscriptionStore
     let sentiment: SentimentStore
     let coaching: CoachingStore
+    let summary: SummaryStore
     let overlay: OverlayManager
-    
+
     // MARK: - Coordinator
     
     private(set) var coordinator: RecordingCoordinator!
@@ -43,8 +45,9 @@ final class AppEnvironment: ObservableObject {
         self.transcription = TranscriptionStore()
         self.sentiment = SentimentStore()
         self.coaching = CoachingStore()
+        self.summary = SummaryStore()
         self.overlay = OverlayManager()
-        
+
         // Composition root: all concrete types instantiated HERE, not in Coordinator
         coordinator = RecordingCoordinator(
             recording: recording,
@@ -52,6 +55,7 @@ final class AppEnvironment: ObservableObject {
             transcription: transcription,
             sentiment: sentiment,
             coaching: coaching,
+            summary: summary,
             micVAD: SileroVAD(),
             systemVAD: SileroVAD(),
             sentimentProvider: SentimentAnalyzer(),
@@ -98,8 +102,9 @@ final class AppEnvironment: ObservableObject {
         self.transcription = TranscriptionStore(persistence: persistence)
         self.sentiment = SentimentStore()
         self.coaching = CoachingStore()
+        self.summary = SummaryStore()
         self.overlay = OverlayManager()
-        
+
         self.coordinator = RecordingCoordinator(
             recording: recording,
             audio: audio,
