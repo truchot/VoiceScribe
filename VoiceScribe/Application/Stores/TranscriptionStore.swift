@@ -25,6 +25,7 @@ final class TranscriptionStore: ObservableObject {
     
     @AppStorage("whisperLanguage") var language: String = "fr"
     @AppStorage("modelSize") var modelSize: String = "large-v3-turbo"
+    @AppStorage("transcriptionEngine") var engine: String = "whisper"
     
     // MARK: - Dependencies
     

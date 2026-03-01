@@ -57,20 +57,93 @@ else
     echo "✅ Model already exists: $MODEL_DIR/$MODEL_FILE"
 fi
 
-# --- 3. Summary ---
+# --- 3. Build voxtral.c (static library) ---
+VOXTRAL_DIR="./libs/voxtral.c"
+
+if [ ! -d "$VOXTRAL_DIR" ]; then
+    echo ""
+    echo "📦 Cloning voxtral.c..."
+    mkdir -p libs
+    git clone https://github.com/antirez/voxtral.c.git "$VOXTRAL_DIR"
+else
+    echo "📦 voxtral.c already cloned, pulling latest..."
+    cd "$VOXTRAL_DIR" && git pull && cd ../..
+fi
+
+echo ""
+echo "🔨 Building voxtral.c (static library)..."
+mkdir -p "$VOXTRAL_DIR/build"
+
+# Generate embedded Metal shaders header
+if [ -f "$VOXTRAL_DIR/voxtral_shaders.metal" ]; then
+    echo "   Embedding Metal shaders..."
+    xxd -i voxtral_shaders.metal > voxtral_shaders_source.h
+fi 2>/dev/null || true
+
+# Compile each .c and .m file (excluding main.c and inspect_weights.c)
+VOXTRAL_OBJS=""
+VOXTRAL_FLAGS="-O2 -DUSE_BLAS -DUSE_METAL -DACCELERATE_NEW_LAPACK -I$VOXTRAL_DIR"
+
+cd "$VOXTRAL_DIR"
+for src in *.c; do
+    [ "$src" = "main.c" ] && continue
+    [ "$src" = "inspect_weights.c" ] && continue
+    obj="build/$(basename "$src" .c).o"
+    echo "   Compiling $src..."
+    clang $VOXTRAL_FLAGS -c "$src" -o "$obj"
+    VOXTRAL_OBJS="$VOXTRAL_OBJS $obj"
+done
+for src in *.m; do
+    obj="build/$(basename "$src" .m).o"
+    echo "   Compiling $src..."
+    clang $VOXTRAL_FLAGS -fobjc-arc -c "$src" -o "$obj" \
+        -framework Foundation -framework Metal -framework MetalPerformanceShaders -framework MetalPerformanceShadersGraph
+    VOXTRAL_OBJS="$VOXTRAL_OBJS $obj"
+done
+
+echo "   Archiving libvoxtral.a..."
+ar rcs build/libvoxtral.a $VOXTRAL_OBJS
+cd ../..
+
+echo "✅ voxtral.c built: $VOXTRAL_DIR/build/libvoxtral.a"
+
+# --- 4. Download Voxtral model (optional: ./setup.sh voxtral) ---
+if [ "${1:-}" = "voxtral" ] || [ "${2:-}" = "voxtral" ]; then
+    echo ""
+    echo "📥 Downloading Voxtral model (~8.9 Go)..."
+    VOXTRAL_MODEL_DIR="./Models/voxtral-model"
+    if [ ! -f "$VOXTRAL_MODEL_DIR/consolidated.safetensors" ]; then
+        mkdir -p "$VOXTRAL_MODEL_DIR"
+        cd "$VOXTRAL_DIR"
+        if [ -f "download_model.sh" ]; then
+            bash download_model.sh
+            # Move downloaded model files to Models/voxtral-model/
+            if [ -d "model" ]; then
+                cp -r model/* "../../$VOXTRAL_MODEL_DIR/"
+            fi
+        else
+            echo "⚠️  download_model.sh not found in voxtral.c — download manually"
+        fi
+        cd ../..
+        echo "✅ Voxtral model downloaded to $VOXTRAL_MODEL_DIR/"
+    else
+        echo "✅ Voxtral model already exists: $VOXTRAL_MODEL_DIR/"
+    fi
+fi
+
+# --- 5. Summary ---
 echo ""
 echo "========================================"
 echo "✅ Setup complete!"
 echo ""
-echo "Library:  $WHISPER_DIR/build/src/libwhisper.dylib"
-echo "Header:   $WHISPER_DIR/include/whisper.h"
+echo "Whisper:  $WHISPER_DIR/build/src/libwhisper.dylib"
+echo "Voxtral:  $VOXTRAL_DIR/build/libvoxtral.a"
 echo "Model:    $MODEL_DIR/$MODEL_FILE"
 echo ""
 echo "Next steps:"
-echo "  1. Open Xcode → File → New → Project → macOS → App"
-echo "  2. Name it 'VoiceScribe', Interface: SwiftUI, Language: Swift"
-echo "  3. Copy all files from VoiceScribe/ into your Xcode project"
-echo "  4. Add the bridging header (see README.md)"
-echo "  5. Link libwhisper.dylib (see README.md)"
-echo "  6. Build & Run 🚀"
+echo "  1. xcodegen generate"
+echo "  2. Build & Run 🚀"
+echo ""
+echo "To download the Voxtral model (~8.9 Go):"
+echo "  ./setup.sh voxtral"
 echo "========================================"

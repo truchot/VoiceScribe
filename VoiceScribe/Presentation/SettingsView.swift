@@ -10,6 +10,7 @@ struct SettingsView: View {
     
     @AppStorage("whisperLanguage") private var language = "fr"
     @AppStorage("modelSize") private var modelSize = "large-v3-turbo"
+    @AppStorage("transcriptionEngine") private var engine = "whisper"
     @AppStorage("globalHotkeysEnabled") private var globalHotkeysEnabled = true
     @AppStorage("vadSensitivity") private var vadSensitivity = 0.5
     @AppStorage("sentimentSmoothingFactor") private var sentimentSmoothing = 0.7
@@ -29,20 +30,54 @@ struct SettingsView: View {
     
     // MARK: - General
     
+    private var selectedEngine: TranscriptionEngine {
+        TranscriptionEngine(rawValue: engine) ?? .whisper
+    }
+
+    private var lowMemory: Bool {
+        ProcessInfo.processInfo.physicalMemory < 16 * 1024 * 1024 * 1024
+    }
+
     var generalTab: some View {
         Form {
-            Section("Modèle Whisper") {
-                Picker("Taille", selection: $modelSize) {
-                    Text("Tiny (~75 Mo)").tag("tiny"); Text("Base (~142 Mo)").tag("base")
-                    Text("Small (~466 Mo)").tag("small"); Text("Medium (~1.5 Go)").tag("medium")
-                    Text("Large V3 Turbo ⭐").tag("large-v3-turbo")
+            Section("Moteur de transcription") {
+                Picker("Moteur", selection: $engine) {
+                    ForEach(TranscriptionEngine.allCases, id: \.rawValue) { e in
+                        Text(e.displayName).tag(e.rawValue)
+                    }
                 }
-                HStack {
-                    Text("État:")
-                    Text(recording.modelLoaded ? "✅ Chargé" : "⚪ Non chargé")
-                        .foregroundStyle(recording.modelLoaded ? .green : .secondary)
-                    Spacer()
-                    Button("Recharger") { Task { await env.loadModel() } }
+                .pickerStyle(.segmented)
+            }
+            if selectedEngine == .whisper {
+                Section("Modèle Whisper") {
+                    Picker("Taille", selection: $modelSize) {
+                        Text("Tiny (~75 Mo)").tag("tiny"); Text("Base (~142 Mo)").tag("base")
+                        Text("Small (~466 Mo)").tag("small"); Text("Medium (~1.5 Go)").tag("medium")
+                        Text("Large V3 Turbo ⭐").tag("large-v3-turbo")
+                    }
+                    HStack {
+                        Text("État:")
+                        Text(recording.modelLoaded ? "✅ Chargé" : "⚪ Non chargé")
+                            .foregroundStyle(recording.modelLoaded ? .green : .secondary)
+                        Spacer()
+                        Button("Recharger") { Task { await env.loadModel() } }
+                    }
+                }
+            } else {
+                Section("Modèle Voxtral") {
+                    Text("Voxtral Realtime 4B — 8.9 Go sur disque, ~10.8 Go RAM")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if lowMemory {
+                        Label("Mémoire insuffisante (< 16 Go). Risque de swap.", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange).font(.caption)
+                    }
+                    HStack {
+                        Text("État:")
+                        Text(recording.modelLoaded ? "✅ Chargé" : "⚪ Non chargé")
+                            .foregroundStyle(recording.modelLoaded ? .green : .secondary)
+                        Spacer()
+                        Button("Recharger") { Task { await env.loadModel() } }
+                    }
                 }
             }
             Section("Langue") {
@@ -80,7 +115,9 @@ struct SettingsView: View {
             Section("Latence") {
                 latencyRow("Sentiment prosodique", "~50ms", .green)
                 latencyRow("Coaching suggestion", "~100ms", .green)
-                latencyRow("Transcription Whisper", "~1-2s", .orange)
+                latencyRow("Transcription \(selectedEngine.displayName)",
+                           selectedEngine == .voxtral ? "~0.5s" : "~1-2s",
+                           selectedEngine == .voxtral ? .green : .orange)
                 latencyRow("Extraction mémoire", "~200ms", .green)
             }
             Section("Overlay compact") {

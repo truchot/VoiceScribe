@@ -144,8 +144,8 @@ final class WhisperTranscriber {
                     // Skip empty or noise-only segments
                     if text.isEmpty || text == "[BLANK_AUDIO]" || text.starts(with: "[") { continue }
 
-                    // Skip known Whisper hallucinations during silence
-                    if Self.isHallucination(text) { continue }
+                    // Skip known hallucinations during silence
+                    if HallucinationFilter.isHallucination(text) { continue }
                     
                     let segStart = TimeInterval(whisper_full_get_segment_t0(ctx, i)) / 100.0
                     let segEnd = TimeInterval(whisper_full_get_segment_t1(ctx, i)) / 100.0
@@ -187,39 +187,6 @@ final class WhisperTranscriber {
         }
     }
     
-    // MARK: - Hallucination Filter
-
-    private static let hallucinationPatterns: Set<String> = [
-        "sous-titrage société radio-canada",
-        "sous-titres réalisés para la communauté d'amara.org",
-        "sous-titres par la communauté d'amara.org",
-        "sous-titrage st 501",
-        "merci d'avoir regardé",
-        "merci de votre attention",
-        "s'abonner",
-        "je vous remercie",
-    ]
-
-    private static let shortHallucinations: Set<String> = [
-        "merci.", "...", "…", "you", "thank you.", "thanks.",
-        "bye.", "the end.", "fin.", "merci",
-    ]
-
-    private static func isHallucination(_ text: String) -> Bool {
-        let lower = text.lowercased()
-        if shortHallucinations.contains(lower) { return true }
-        for pattern in hallucinationPatterns {
-            if lower.contains(pattern) { return true }
-        }
-        // Repeated single words/phrases (e.g. "Merci. Merci. Merci.")
-        let words = lower.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
-        if words.count >= 2 {
-            let unique = Set(words)
-            if unique.count == 1 { return true }
-        }
-        return false
-    }
-
     // MARK: - Error Types
     
     enum WhisperError: LocalizedError {

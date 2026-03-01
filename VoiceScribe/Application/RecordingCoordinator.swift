@@ -111,29 +111,57 @@ final class RecordingCoordinator {
     
     // MARK: - Model Loading
     
+    /// Shared Voxtral context — kept alive so both transcribers share one model (~10.8 GB).
+    private var voxtralContext: VoxtralContext?
+
     func loadModel() async {
         recording.setLoading()
-        
-        guard let modelPath = findModelPath() else {
-            recording.setError("Modèle introuvable. Lancez ./setup.sh")
-            return
-        }
-        
+
+        let engine = TranscriptionEngine(rawValue: transcription.engine) ?? .whisper
         let language = transcription.language
-        
+
+        // Unload previous engine
+        whisperMic?.unloadModel()
+        whisperSystem?.unloadModel()
+        whisperMic = nil
+        whisperSystem = nil
+        voxtralContext = nil
+
         do {
-            let t1 = makeTranscriber(modelPath, language)
-            let t2 = makeTranscriber(modelPath, language)
-            
-            try await Task.detached(priority: .userInitiated) {
-                try t1.loadModel()
-                try t2.loadModel()
-            }.value
-            
-            whisperMic = t1
-            whisperSystem = t2
+            switch engine {
+            case .whisper:
+                guard let modelPath = findModelPath() else {
+                    recording.setError("Modèle Whisper introuvable. Lancez ./setup.sh")
+                    return
+                }
+                let t1 = makeTranscriber(modelPath, language)
+                let t2 = makeTranscriber(modelPath, language)
+                try await Task.detached(priority: .userInitiated) {
+                    try t1.loadModel()
+                    try t2.loadModel()
+                }.value
+                whisperMic = t1
+                whisperSystem = t2
+
+            case .voxtral:
+                guard let modelDir = findVoxtralModelDir() else {
+                    recording.setError("Modèle Voxtral introuvable. Lancez ./setup.sh voxtral")
+                    return
+                }
+                let ctx = VoxtralContext()
+                let config = VoxtralTranscriber.Config(modelDir: modelDir, language: language)
+                let t1 = VoxtralTranscriber(config: config, sharedContext: ctx)
+                let t2 = VoxtralTranscriber(config: config, sharedContext: ctx)
+                try await Task.detached(priority: .userInitiated) {
+                    try t1.loadModel()
+                    try t2.loadModel()
+                }.value
+                voxtralContext = ctx
+                whisperMic = t1
+                whisperSystem = t2
+            }
+
             recording.setReady()
-            
             await audio.checkPermissions()
             if globalHotkeysEnabled { hotkeys.enable() }
         } catch {
@@ -465,6 +493,22 @@ final class RecordingCoordinator {
     
     // MARK: - Model Path Resolution
     
+    private func findVoxtralModelDir() -> String? {
+        let marker = "consolidated.safetensors"
+        let candidates: [String] = [
+            Bundle.main.bundleURL
+                .deletingLastPathComponent()
+                .appendingPathComponent("Models/voxtral-model").path,
+            FileManager.default.currentDirectoryPath + "/Models/voxtral-model",
+            NSHomeDirectory() + "/Sites/VoiceScribe/Models/voxtral-model",
+            NSHomeDirectory() + "/VoiceScribe/Models/voxtral-model",
+            NSHomeDirectory() + "/Developer/VoiceScribe/Models/voxtral-model"
+        ]
+        return candidates.first(where: {
+            FileManager.default.fileExists(atPath: $0 + "/" + marker)
+        })
+    }
+
     private func findModelPath() -> String? {
         let f = "ggml-\(transcription.modelSize).bin"
         let candidates: [String?] = [

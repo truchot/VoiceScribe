@@ -14,11 +14,13 @@ settings:
     HEADER_SEARCH_PATHS:
       - $(PROJECT_DIR)/libs/whisper.cpp/include
       - $(PROJECT_DIR)/libs/whisper.cpp/ggml/include
+      - $(PROJECT_DIR)/libs/voxtral.c
     LIBRARY_SEARCH_PATHS:
       - $(PROJECT_DIR)/libs/whisper.cpp/build/src
       - $(PROJECT_DIR)/libs/whisper.cpp/build/ggml/src
       - $(PROJECT_DIR)/libs/whisper.cpp/build/ggml/src/ggml-metal
       - $(PROJECT_DIR)/libs/whisper.cpp/build/ggml/src/ggml-blas
+      - $(PROJECT_DIR)/libs/voxtral.c/build
     OTHER_LDFLAGS:
       - -lwhisper
       - -lggml
@@ -26,7 +28,10 @@ settings:
       - -lggml-cpu
       - -lggml-metal
       - -lggml-blas
+      - -lvoxtral
       - -lc++
+      - -framework MetalPerformanceShaders
+      - -framework MetalPerformanceShadersGraph
     LD_RUNPATH_SEARCH_PATHS:
       - "@executable_path/../Frameworks"
       - "$(PROJECT_DIR)/libs/whisper.cpp/build/src"

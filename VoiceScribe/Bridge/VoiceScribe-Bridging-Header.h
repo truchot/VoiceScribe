@@ -5,5 +5,7 @@
 #define VoiceScribe_Bridging_Header_h
 
 #include "whisper.h"
+#include "voxtral.h"
+#include "voxtral_audio.h"
 
 #endif

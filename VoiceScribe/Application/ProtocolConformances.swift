@@ -20,6 +20,9 @@ extension SentimentAnalyzer: SentimentProvider {}
 // so the extension just declares conformance.
 extension WhisperTranscriber: TranscriberProvider {}
 
+// MARK: - VoxtralTranscriber → TranscriberProvider
+extension VoxtralTranscriber: TranscriberProvider {}
+
 // MARK: - ConversationCoach → CoachingProvider
 extension ConversationCoach: CoachingProvider {}
 
